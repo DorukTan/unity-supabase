@@ -140,6 +140,9 @@ Packages/packages-lock.json linguist-generated
 *.tiff                  lfs
 *.webp                  lfs
 
+# Keep repository artwork directly in Git so GitHub can render it without Git LFS.
+.github/assets/*.png    -lfs -filter -diff -merge -text
+
 # Compressed Archive
 *.7z                    lfs
 *.bz2                   lfs
