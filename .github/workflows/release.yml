@@ -42,6 +42,14 @@ jobs:
           PY
       - name: Build release archives
         run: python3 .github/scripts/build_release.py --output dist
+      - name: Build release notes from changelog
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 .github/scripts/build_release_notes.py \
+            --version "${RELEASE_TAG#v}" \
+            --repository "$GITHUB_REPOSITORY" \
+            --output "$RUNNER_TEMP/release-notes.md"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,6 +61,6 @@ jobs:
           fi
           gh release create "$RELEASE_TAG" dist/* \
             --verify-tag \
-            --generate-notes \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
             --title "Supabase for Unity $RELEASE_TAG" \
             "${prerelease[@]}"

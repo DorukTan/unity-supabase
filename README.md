@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.2"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.2-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.2/com.supabaseunity.client-0.2.0-beta.2.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://openupm.com/packages/com.supabaseunity.client/"><img alt="OpenUPM" src="https://img.shields.io/npm/v/com.supabaseunity.client?label=openupm&amp;registry_uri=https://package.openupm.com" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
