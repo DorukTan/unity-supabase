@@ -25,5 +25,7 @@ jobs:
         run: python3 .github/scripts/validate_package.py
       - name: Build and verify release archives
         run: python3 .github/scripts/build_release.py --output /tmp/supabase-unity-release
+      - name: Verify release notes
+        run: python3 .github/scripts/build_release_notes.py --output /tmp/supabase-unity-release-notes.md
       - name: Validate WebGL plugin syntax
         run: node --check < Packages/com.supabaseunity.client/Runtime/Plugins/WebGL/SupabaseUnity.jslib
