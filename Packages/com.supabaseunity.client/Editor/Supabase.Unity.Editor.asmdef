@@ -1,0 +1,11 @@
+{
+  "name": "Supabase.Unity.Editor",
+  "rootNamespace": "Supabase.Unity.Editor",
+  "references": [
+    "Supabase.Unity.Runtime"
+  ],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"],
+  "autoReferenced": true
+}

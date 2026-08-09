@@ -1,0 +1,83 @@
+# Changelog
+
+## [0.2.0-beta.2] - 2026-08-09
+
+### Added
+
+- GitHub releases now include a Unity Package Manager tarball and a `.unitypackage` archive.
+- Release archives are built and checked automatically from version tags.
+
+### Changed
+
+- Installation and project documentation have been consolidated around the supported package
+  formats, runtime requirements and security boundary.
+
+## [0.2.0-beta.1] - 2026-08-04
+
+See [the migration guide](Documentation~/migration-0.2.md) for the two breaking changes.
+
+### Fixed
+
+- OAuth sign-in now survives the operating system terminating a backgrounded app during the
+  browser hop. PKCE verifiers are stored durably and independently of `PersistSession`,
+  expire after 10 minutes, and are removed once exchanged. Previously the verifier was lost
+  on a cold start and the failure message wrongly told the user their callback had reached a
+  different device.
+- `RefreshSessionAsync` no longer returns `null` when the HTTP transport completes
+  synchronously. `ClearRefreshTaskWhenComplete` cleared the shared field from inside the
+  caller's reentrant lock, so the caller received `null` and threw. Only reachable through a
+  custom `IHttpTransport`; the default transport was unaffected.
+
+### Changed
+
+- **Breaking:** `FileSessionStore` is now `UnencryptedFileSessionStore`. Behaviour is
+  unchanged; the name now states what it does.
+- **Breaking:** `AuthClient`'s constructor takes a PKCE store. Pass `null` for the previous
+  behaviour. `SupabaseClient` handles this for you.
+- The settings inspector now names where a persisted token is written and who can read it,
+  per platform, instead of describing it as "an ordinary file".
+
+### Added
+
+- `SupabaseClientOptions.PkceStore` for controlling where OAuth verifiers are stored.
+- First test coverage for `AuthClient`: 41 EditMode tests, up from 23, covering password
+  auth, OTP, anonymous sign-in, refresh single-flighting, session restore, identity linking,
+  MFA, disposal, and the full PKCE lifecycle including cold start and expiry.
+- [Session storage documentation](Documentation~/session-storage.md), including per-platform
+  exposure and a skeleton for a Keychain or Keystore-backed `ISessionStore`.
+- `SUPPORT.md`, `CONTRIBUTING.md`, and issue forms, including a platform report form.
+
+### Security
+
+- Documentation no longer implies that session persistence is backed by Keychain or Keystore.
+  It states plainly that the refresh token is written as plain text, and who can read it on
+  each platform.
+- The licensed Unity EditMode matrix now runs on `main` and on same-repo pull requests
+  instead of manual dispatch only, so a regression can fail a pull request. Requires the
+  `UNITY_LICENSE` secret.
+- CI fails when `X-Client-Info` drifts from the version in `package.json`.
+
+### Known limitations
+
+- The platform support matrix now records how each target was verified rather than only
+  whether it is expected to work. Editor, WebGL, Windows, macOS, Android, and iOS are
+  maintainer-verified. Linux is untested. Consoles remain unsupported.
+- `SupabaseClient` cannot be used from Editor scripts outside Play mode; the transport drives
+  requests through coroutines. No shipped code path is affected. Planned for 0.3.0.
+- Blocking on these tasks from the main thread (`.Result`, `.GetAwaiter().GetResult()`)
+  deadlocks, because the transport needs the main thread to make progress. Use `await` or the
+  coroutine bridge.
+
+## [0.1.0-alpha.1] - 2026-07-22
+
+- Added Unity-first Auth, PostgREST Database, Realtime, Storage and Edge Functions clients.
+- Added WebGL localStorage and browser WebSocket bridges.
+- Added native `ClientWebSocket` transport, persisted sessions, automatic refresh and reconnect.
+- Added Editor configuration validator and OpenAPI model generator.
+- Added English and Turkish documentation and a Quickstart sample.
+- Kept new publishable API keys out of the JWT Authorization header while retaining legacy anon JWT support.
+- Rejected elevated credentials in client configuration, request headers, persisted sessions and build assets.
+- Made session persistence opt-in and documented secure native storage requirements.
+- Hardened Realtime token changes, reconnects, heartbeat acknowledgements, filtered bindings and Presence merging.
+- Sanitized WebGL Auth callback URLs after processing, blocked credentialed redirects, and hardened model generation output boundaries.
+- Expanded the Unity 2021-compatible EditMode suite to 23 tests.

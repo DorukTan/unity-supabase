@@ -1,0 +1,85 @@
+name: Platform report
+description: Report that you shipped or tested a build on a platform, working or not
+labels: ["platform-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The [support matrix](https://github.com/DorukTan/unity-supabase#platform-support) has
+        rows marked `Untested`. A credible report moves one. This is the most useful thing
+        you can contribute, and it is welcome whether the result was good or bad.
+
+  - type: checkboxes
+    id: no-credentials
+    attributes:
+      label: Credentials
+      options:
+        - label: I have removed every API key, JWT, refresh token, and project URL from the details below.
+          required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - WebGL
+        - Windows player
+        - macOS player
+        - Linux player
+        - Android
+        - iOS
+    validations:
+      required: true
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      options:
+        - Worked
+        - Worked with caveats
+        - Did not work
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Unity and package version
+      placeholder: Unity 6000.4.8f1, package 0.2.0-beta.2
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device or browser
+      placeholder: Pixel 7 (Android 14) / Firefox 141 on Windows 11
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: exercised
+    attributes:
+      label: What you exercised
+      options:
+        - label: Auth sign-in
+        - label: OAuth via external browser
+        - label: Session persistence across a restart
+        - label: Database queries
+        - label: Realtime subscriptions
+        - label: Storage upload or download
+        - label: Edge Functions
+
+  - type: input
+    id: stripping
+    attributes:
+      label: Managed Stripping Level
+      description: Player builds only. Found under Player Settings > Other Settings.
+      placeholder: Medium
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Caveats or failures
+      description: Anything that needed a workaround, or the error if it did not work.

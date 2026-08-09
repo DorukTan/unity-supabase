@@ -1,0 +1,68 @@
+# Proves the package compiles for WebGL under IL2CPP.
+# Does NOT prove runtime behaviour under managed code stripping. A build that
+# compiles can still fail at runtime when Json.NET reflects over stripped types.
+#
+# Runs on main and on demand only. A WebGL build takes 10-30 minutes, which is
+# not worth paying on every push to a branch.
+name: WebGL build canary
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webgl-canary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  license:
+    name: License available?
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::UNITY_LICENSE is not set. Skipping the WebGL canary."
+          fi
+
+  build:
+    name: WebGL (Unity ${{ matrix.unity }})
+    needs: license
+    if: needs.license.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        unity:
+          - 6000.4.8f1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Cache Library
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ matrix.unity }}-${{ hashFiles('Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-${{ matrix.unity }}-
+      - name: Build WebGL
+        uses: game-ci/unity-builder@1d4ee0697f193f54668e98961d79907911f4b4f2 # v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          targetPlatform: WebGL
+          unityVersion: ${{ matrix.unity }}
+          allowDirtyBuild: true

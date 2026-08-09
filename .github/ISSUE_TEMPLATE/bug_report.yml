@@ -1,0 +1,92 @@
+name: Bug report
+description: Something in the package does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Questions about Supabase itself, Row Level Security policies, or PostgREST query
+        behaviour belong in [Supabase's channels](https://supabase.com/docs), not here.
+        This tracker is for defects in the Unity package.
+
+  - type: checkboxes
+    id: no-credentials
+    attributes:
+      label: Credentials
+      options:
+        - label: I have removed every API key, JWT, refresh token, and project URL from the logs and code below.
+          required: true
+
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version
+      description: From package.json, or the git tag you installed.
+      placeholder: 0.2.0-beta.2
+    validations:
+      required: true
+
+  - type: input
+    id: unity-version
+    attributes:
+      label: Unity version
+      description: Exactly as shown in ProjectSettings/ProjectVersion.txt.
+      placeholder: 6000.4.8f1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Target platform
+      options:
+        - Editor
+        - WebGL
+        - Windows player
+        - macOS player
+        - Linux player
+        - Android
+        - iOS
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: For player builds. Model and OS version.
+      placeholder: Pixel 7, Android 14
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest set of steps that shows the problem. A short code snippet beats a description.
+      placeholder: |
+        1. Configure SupabaseSettings with ...
+        2. Call ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Console output or Player.log. Rendered as code, no backticks needed.
+      render: text
+
+  - type: checkboxes
+    id: stripping
+    attributes:
+      label: For player builds
+      options:
+        - label: I have checked whether the problem also occurs with Managed Stripping Level set to Minimal.

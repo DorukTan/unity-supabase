@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Supabase questions
+    url: https://supabase.com/docs
+    about: RLS policies, PostgREST behaviour, pricing, and dashboard questions belong with Supabase.
+  - name: Security vulnerability
+    url: https://github.com/DorukTan/unity-supabase/security/advisories/new
+    about: Report privately. Never open a public issue for an unpatched vulnerability.
+  - name: Support policy
+    url: https://github.com/DorukTan/unity-supabase/blob/main/SUPPORT.md
+    about: What to expect from this project before you file.

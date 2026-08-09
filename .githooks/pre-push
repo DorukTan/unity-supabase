@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+#
+# Pre-push gate.
+#
+# CI cannot compile this project's C#: running Unity in GitHub Actions needs a
+# license this project does not have. This hook is the substitute. It is the
+# only thing standing between a broken commit and a published tag.
+#
+# Install:   git config core.hooksPath .githooks
+# Bypass:    git push --no-verify        (you had better mean it)
+# Force run: RUN_TESTS=1 git push        (test any branch, not just main/tags)
+#
+# By default the full Unity suite runs only when pushing main or a tag, because
+# that is what gets released. Every push runs the fast package validator.
+
+set -uo pipefail
+
+RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; DIM=$'\033[2m'; OFF=$'\033[0m'
+say()  { printf '%s\n' "$*" >&2; }
+fail() { printf '%s\n' "${RED}pre-push: $*${OFF}" >&2; exit 1; }
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT" || fail "cannot cd to repository root"
+
+# ---------------------------------------------------------------- what is being pushed
+# stdin gives: <local ref> <local sha> <remote ref> <remote sha>, one line per ref.
+# It must be consumed or git may see a broken pipe.
+NEED_TESTS=${RUN_TESTS:-0}
+PUSHING_ANYTHING=0
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+    [ -z "${local_sha:-}" ] && continue
+    case "$local_sha" in *[!0]*) ;; *) continue ;; esac   # all-zero sha = branch deletion
+    PUSHING_ANYTHING=1
+    case "$remote_ref" in
+        refs/heads/main|refs/heads/master|refs/tags/*) NEED_TESTS=1 ;;
+    esac
+done
+
+[ "$PUSHING_ANYTHING" = "0" ] && exit 0
+
+# ---------------------------------------------------------------- always: package validator
+if command -v python >/dev/null 2>&1; then PY=python
+elif command -v python3 >/dev/null 2>&1; then PY=python3
+else PY=""; fi
+
+if [ -n "$PY" ] && [ -f .github/scripts/validate_package.py ]; then
+    say "${DIM}pre-push: validating package...${OFF}"
+    if ! "$PY" .github/scripts/validate_package.py >/dev/null 2>&1; then
+        say ""
+        "$PY" .github/scripts/validate_package.py >&2
+        say ""
+        fail "package validation failed (see above)"
+    fi
+    say "${GREEN}pre-push: package valid${OFF}"
+else
+    say "${YELLOW}pre-push: python not found, skipping package validation${OFF}"
+fi
+
+if [ "$NEED_TESTS" != "1" ]; then
+    say "${DIM}pre-push: not main or a tag, skipping Unity tests (RUN_TESTS=1 to force)${OFF}"
+    exit 0
+fi
+
+# ---------------------------------------------------------------- locate the editor
+VERSION_FILE=ProjectSettings/ProjectVersion.txt
+[ -f "$VERSION_FILE" ] || fail "$VERSION_FILE not found"
+UNITY_VERSION=$(sed -n 's/^m_EditorVersion: *//p' "$VERSION_FILE" | tr -d '\r')
+[ -n "$UNITY_VERSION" ] || fail "could not read the editor version from $VERSION_FILE"
+
+UNITY="${UNITY_PATH:-}"
+if [ -z "$UNITY" ]; then
+    for candidate in \
+        "/c/Program Files/Unity/Hub/Editor/$UNITY_VERSION/Editor/Unity.exe" \
+        "/c/Program Files/Unity/Editor/Unity.exe" \
+        "/Applications/Unity/Hub/Editor/$UNITY_VERSION/Unity.app/Contents/MacOS/Unity" \
+        "$HOME/Unity/Hub/Editor/$UNITY_VERSION/Editor/Unity"
+    do
+        [ -x "$candidate" ] && { UNITY="$candidate"; break; }
+    done
+fi
+[ -n "$UNITY" ] && [ -x "$UNITY" ] || fail "Unity $UNITY_VERSION not found.
+  Set UNITY_PATH=/path/to/Unity, or push with --no-verify if you know what you are doing."
+
+# Unity holds an exclusive lock on the project. Batchmode fails if it is open.
+# A crashed or killed editor leaves the lockfile behind, so check for a live
+# process rather than trusting the file alone.
+if [ -f Temp/UnityLockfile ]; then
+    unity_running=0
+    if command -v tasklist >/dev/null 2>&1; then
+        tasklist //FI "IMAGENAME eq Unity.exe" 2>/dev/null | grep -qi "Unity.exe" && unity_running=1
+    elif command -v pgrep >/dev/null 2>&1; then
+        pgrep -x Unity >/dev/null 2>&1 && unity_running=1
+    else
+        unity_running=1   # cannot tell; assume it is open and be safe
+    fi
+
+    if [ "$unity_running" = "1" ]; then
+        fail "the Unity Editor has this project open. Close it and push again,
+  or run the suite from Window > General > Test Runner and push with --no-verify."
+    fi
+
+    say "${YELLOW}pre-push: removing a stale Temp/UnityLockfile (no Unity process running)${OFF}"
+    rm -f Temp/UnityLockfile
+fi
+
+# ---------------------------------------------------------------- run the suite
+if command -v cygpath >/dev/null 2>&1; then PROJECT_PATH=$(cygpath -w "$REPO_ROOT")
+else PROJECT_PATH=$(pwd -W 2>/dev/null || pwd); fi
+
+RESULTS="$(mktemp -t unity-tests-XXXXXX).xml"
+LOG="$(mktemp -t unity-log-XXXXXX).txt"
+cleanup() { rm -f "$RESULTS" "$LOG"; }
+trap cleanup EXIT
+
+say "${DIM}pre-push: running EditMode tests on Unity $UNITY_VERSION (this takes a few minutes)...${OFF}"
+"$UNITY" -runTests -batchmode -projectPath "$PROJECT_PATH" \
+         -testPlatform EditMode -testResults "$RESULTS" -logFile "$LOG" >/dev/null 2>&1
+UNITY_EXIT=$?
+
+if [ ! -s "$RESULTS" ]; then
+    say ""
+    say "${RED}pre-push: Unity produced no test results (exit $UNITY_EXIT).${OFF}"
+    say "${DIM}Last 30 log lines:${OFF}"
+    tail -30 "$LOG" >&2 2>/dev/null || true
+    say ""
+    fail "could not verify the tests. This usually means a compile error."
+fi
+
+# Trust the XML, not the exit code: batchmode exit status is not a reliable signal.
+SUMMARY=$("$PY" - "$RESULTS" <<'PYEOF'
+import re, sys
+try:
+    text = open(sys.argv[1], encoding="utf-8").read()
+except Exception as exc:
+    print(f"ERROR|0|0|could not read results: {exc}"); raise SystemExit(0)
+run = re.search(r"<test-run[^>]*>", text)
+if not run:
+    print("ERROR|0|0|no <test-run> element"); raise SystemExit(0)
+def attr(name):
+    m = re.search(rf'{name}="(\d+)"', run.group(0))
+    return int(m.group(1)) if m else 0
+total, passed, failed = attr("total"), attr("passed"), attr("failed")
+names = re.findall(r'<test-case[^>]*\bname="([^"]+)"[^>]*\bresult="Failed"', text)
+names += re.findall(r'<test-case[^>]*\bresult="Failed"[^>]*\bname="([^"]+)"', text)
+status = "FAIL" if (failed or not total) else "OK"
+print(f"{status}|{total}|{passed}|" + ", ".join(sorted(set(names))[:8]))
+PYEOF
+)
+
+STATUS=${SUMMARY%%|*}; REST=${SUMMARY#*|}
+TOTAL=${REST%%|*};     REST=${REST#*|}
+PASSED=${REST%%|*};    DETAIL=${REST#*|}
+
+if [ "$STATUS" != "OK" ]; then
+    say ""
+    say "${RED}pre-push: $((TOTAL - PASSED)) of $TOTAL tests failed.${OFF}"
+    [ -n "$DETAIL" ] && say "${RED}  $DETAIL${OFF}"
+    say ""
+    fail "push blocked. Fix the tests, or use --no-verify to override."
+fi
+
+say "${GREEN}pre-push: $PASSED/$TOTAL tests passed${OFF}"
+exit 0

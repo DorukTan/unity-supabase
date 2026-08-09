@@ -1,0 +1,14 @@
+{
+  "name": "Supabase.Unity.Tests",
+  "rootNamespace": "Supabase.Unity.Tests",
+  "references": [
+    "Supabase.Unity.Runtime",
+    "Supabase.Unity.Editor"
+  ],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": ["Editor"],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"],
+  "autoReferenced": false
+}

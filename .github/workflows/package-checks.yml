@@ -1,0 +1,29 @@
+name: Package integrity
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-integrity-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Package integrity and security
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate package and release boundary
+        run: python3 .github/scripts/validate_package.py
+      - name: Build and verify release archives
+        run: python3 .github/scripts/build_release.py --output /tmp/supabase-unity-release
+      - name: Validate WebGL plugin syntax
+        run: node --check < Packages/com.supabaseunity.client/Runtime/Plugins/WebGL/SupabaseUnity.jslib

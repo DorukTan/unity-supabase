@@ -1,0 +1,4 @@
+<linker>
+  <!-- Auth and Storage response models are hydrated through Json.NET reflection on IL2CPP. -->
+  <assembly fullname="Supabase.Unity.Runtime" preserve="all" />
+</linker>
