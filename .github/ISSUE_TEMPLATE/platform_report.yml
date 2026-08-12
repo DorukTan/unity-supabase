@@ -5,9 +5,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        The [support matrix](https://github.com/DorukTan/unity-supabase#platform-support) has
-        rows marked `Untested`. A credible report moves one. This is the most useful thing
-        you can contribute, and it is welcome whether the result was good or bad.
+        The [support matrix](https://github.com/DorukTan/unity-supabase#platform-support) still
+        has gaps. A detailed report gives the project real-world evidence. This is one of the
+        most useful things you can contribute, whether the result was good or bad.
 
   - type: checkboxes
     id: no-credentials
@@ -46,7 +46,7 @@ body:
     id: versions
     attributes:
       label: Unity and package version
-      placeholder: Unity 6000.4.8f1, package 0.2.0-beta.2
+      placeholder: Unity 6000.4.8f1, package 0.2.0-beta.3
     validations:
       required: true
 
@@ -54,7 +54,7 @@ body:
     id: device
     attributes:
       label: Device or browser
-      placeholder: Pixel 7 (Android 14) / Firefox 141 on Windows 11
+      placeholder: Pixel 7 (Android 14) / Firefox on Windows 11
     validations:
       required: true
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0-beta.3] - 2026-08-12
+
+### Changed
+
+- GitHub-hosted checks are now explicitly license-free and no longer publish successful jobs
+  that only skipped Unity because a license secret was unavailable.
+- Releases now require a local Unity verification record covering EditMode tests, clean
+  `.unitypackage` import, WebGL compilation, and the exact hashes of both published archives.
+- Corrected the setup, PKCE persistence, WebGL CORS, security-policy, and platform-report
+  documentation without changing the package API.
+
 ## [0.2.0-beta.2] - 2026-08-09
 
 ### Added
@@ -30,10 +41,10 @@ See [the migration guide](Documentation~/migration-0.2.md) for the two breaking 
 
 ### Changed
 
-- **Breaking:** `FileSessionStore` is now `UnencryptedFileSessionStore`. Behaviour is
+- **Breaking:** `FileSessionStore` is now `UnencryptedFileSessionStore`. Behavior is
   unchanged; the name now states what it does.
 - **Breaking:** `AuthClient`'s constructor takes a PKCE store. Pass `null` for the previous
-  behaviour. `SupabaseClient` handles this for you.
+  behavior. `SupabaseClient` handles this for you.
 - The settings inspector now names where a persisted token is written and who can read it,
   per platform, instead of describing it as "an ordinary file".
 
@@ -52,9 +63,8 @@ See [the migration guide](Documentation~/migration-0.2.md) for the two breaking 
 - Documentation no longer implies that session persistence is backed by Keychain or Keystore.
   It states plainly that the refresh token is written as plain text, and who can read it on
   each platform.
-- The licensed Unity EditMode matrix now runs on `main` and on same-repo pull requests
-  instead of manual dispatch only, so a regression can fail a pull request. Requires the
-  `UNITY_LICENSE` secret.
+- Added an optional licensed Unity EditMode matrix for `main` and same-repo pull requests. It
+  only ran when a `UNITY_LICENSE` secret was available.
 - CI fails when `X-Client-Info` drifts from the version in `package.json`.
 
 ### Known limitations

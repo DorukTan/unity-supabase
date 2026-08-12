@@ -42,6 +42,8 @@ jobs:
           PY
       - name: Build release archives
         run: python3 .github/scripts/build_release.py --output dist
+      - name: Match archives to local Unity verification
+        run: python3 .github/scripts/validate_package.py --release-archives dist
       - name: Build release notes from changelog
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -59,7 +61,7 @@ jobs:
           if [[ "$RELEASE_TAG" == *-* ]]; then
             prerelease+=(--prerelease)
           fi
-          gh release create "$RELEASE_TAG" dist/* \
+          gh release create "$RELEASE_TAG" dist/* .github/release-verification.json \
             --verify-tag \
             --notes-file "$RUNNER_TEMP/release-notes.md" \
             --title "Supabase for Unity $RELEASE_TAG" \

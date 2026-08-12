@@ -2,7 +2,7 @@
 
 ## WebGL
 
-- HTTP uses `UnityWebRequest`; the Supabase project must allow the deployed origin through CORS.
+- HTTP uses `UnityWebRequest`. Browser CORS rules apply; Edge Functions called from WebGL must return the appropriate CORS and preflight headers for the deployed origin.
 - Realtime uses the browser `WebSocket` API through `SupabaseUnity.jslib`.
 - When persistence is enabled, sessions use browser `localStorage`. Persistence is off by default.
 - PKCE verifiers always use `localStorage`, independently of the persistence setting. See [session storage](session-storage.md).
@@ -19,4 +19,4 @@
 
 ## Unity versions
 
-The runtime assembly avoids editor-only APIs and targets the Unity 2021.3 API surface. The CI workflow is configured to compile/test the oldest supported LTS, a current intermediate LTS and Unity 6. Hardware validation remains separate from compilation. The package does not support consoles until their networking and secure-storage constraints are validated on hardware.
+The runtime assembly avoids editor-only APIs and targets the Unity 2021.3 API surface. Unity compilation and tests run locally on Hub-activated editors; GitHub-hosted checks are intentionally license-free. New tagged releases record the exact editor version and test count used by the local release gate. Compatibility checks on Unity 2021.3 and 2022.3 are maintainer-run before stable compatibility claims, while the project version is the release gate used for every tag. Hardware validation remains separate from compilation. The package does not support consoles until their networking and secure-storage constraints are validated on hardware.

@@ -15,7 +15,7 @@ options.SessionStore = new FileSessionStore();
 options.SessionStore = new UnencryptedFileSessionStore();
 ```
 
-Behaviour is identical. The rename exists because the old name said nothing about what the
+Behavior is identical. The rename exists because the old name said nothing about what the
 type does: it writes your refresh token to disk as plain text. On Android and iOS that
 location is app-private; on Windows, macOS, and Linux it is readable by any process running
 as the same user. You should not be able to select that without noticing.
@@ -39,9 +39,9 @@ new AuthClient(options, endpoint, transport, sessionStore, callbackProvider);
 new AuthClient(options, endpoint, transport, sessionStore, pkceStore, callbackProvider);
 ```
 
-Pass `null` for `pkceStore` to fall back to the session store, which is the old behaviour.
+Pass `null` for `pkceStore` to fall back to the session store, which is the old behavior.
 
-## Behaviour change worth knowing about, even though nothing breaks
+## Behavior change worth knowing about, even though nothing breaks
 
 **OAuth sign-in now survives the app being killed.**
 

@@ -1,4 +1,4 @@
-name: Package integrity
+name: License-free package checks
 
 on:
   push:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Package integrity and security
+    name: Package integrity, security, and archives
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

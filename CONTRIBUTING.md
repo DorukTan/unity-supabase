@@ -28,7 +28,8 @@ for the real result; batchmode stdout is not a reliable pass/fail signal. Do not
 
 ## The pre-push hook
 
-Because CI cannot run the tests (see below), a hook does it locally. Enable it once:
+Hosted checks intentionally remain license-free, so a hook runs Unity locally on the machine
+where it is already activated through Unity Hub. Enable it once:
 
 ```bash
 git config core.hooksPath .githooks
@@ -42,6 +43,8 @@ What it does on `git push`:
 - **Every push:** runs `validate_package.py`. Takes about a second. Blocks on failure.
 - **Pushing `main` or a tag:** also runs the full EditMode suite and blocks if anything
   fails. Takes a few minutes.
+- **Pushing a tag:** also rebuilds the release archives and checks them against the committed
+  local verification record.
 
 Feature branches skip the Unity run by default, since what matters is what gets released.
 Force it anywhere with `RUN_TESTS=1 git push`.
@@ -84,19 +87,24 @@ It enforces, among other things:
   values, not exceptions. Keep it that way.
 - New behavior needs a test. `Tests/Runtime/` uses fake transports; see `TestDoubles.cs`.
 
-## What CI will and will not run on your PR
+## What hosted checks will and will not run on your PR
 
-**CI does not compile C# or run tests.** Running Unity in GitHub Actions requires a license
-this project does not have. The workflow exists and skips cleanly; it will activate on its
-own if a license is ever added.
+**GitHub Actions does not compile C# or run Unity tests.** Unity Personal activation is handled
+through Unity Hub and is not available to the hosted runner. The repository therefore has no
+placeholder Unity workflow and no green check that merely means Unity was skipped.
 
-What does run is `validate_package.py`: package structure, credential scanning, action
-pinning, meta-file and whitespace checks, and version consistency. Useful, but it will not
-catch a compile error or a broken test.
+What does run is explicitly named **License-free package checks**: package structure,
+credential scanning, action pinning, metadata and whitespace checks, version consistency,
+deterministic archive construction, release-note generation, and WebGL plugin syntax. These
+checks are useful, but they will not catch a C# compile error or a broken Unity test.
 
 **This means running the EditMode suite locally is not optional.** A green checkmark on your
 pull request does not mean your code builds. Please run the tests and say so in the pull
 request description, including the pass count you saw.
+
+Maintainers preparing a tag must run the complete local gate documented in
+[RELEASING.md](RELEASING.md). It additionally performs a clean `.unitypackage` import, a WebGL
+build, and produces the archive hashes enforced by the tag workflow.
 
 ## Things to keep out of pull requests
 
