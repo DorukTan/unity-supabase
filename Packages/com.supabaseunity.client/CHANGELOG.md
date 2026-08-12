@@ -8,6 +8,8 @@
   that only skipped Unity because a license secret was unavailable.
 - Releases now require a local Unity verification record covering EditMode tests, clean
   `.unitypackage` import, WebGL compilation, and the exact hashes of both published archives.
+- Release archives now normalize text line endings so Windows and Linux builds produce the
+  same package bytes.
 - Corrected the setup, PKCE persistence, WebGL CORS, security-policy, and platform-report
   documentation without changing the package API.
 

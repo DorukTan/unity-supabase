@@ -20,6 +20,15 @@ PACKAGE_NAME = "com.supabaseunity.client"
 UNITY_TARGET_ROOT = Path("Assets") / "SupabaseUnity"
 GUID_PATTERN = re.compile(r"(?m)^guid: ([0-9a-f]{32})$")
 ARCHIVE_MTIME = int(os.environ.get("SOURCE_DATE_EPOCH", "0"))
+TEXT_SUFFIXES = {
+    ".asmdef",
+    ".cs",
+    ".jslib",
+    ".json",
+    ".md",
+    ".meta",
+    ".xml",
+}
 
 
 @dataclass(frozen=True)
@@ -28,6 +37,14 @@ class UnityAsset:
     meta: bytes
     pathname: str
     guid: str
+
+
+def read_source_bytes(path: Path) -> bytes:
+    """Read package text with platform-independent line endings."""
+    data = path.read_bytes()
+    if path.suffix.lower() in TEXT_SUFFIXES:
+        return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return data
 
 
 def read_manifest() -> dict[str, object]:
@@ -73,7 +90,7 @@ def build_upm_archive(path: Path) -> None:
             if source.is_dir():
                 archive.addfile(tar_info(f"{archive_name}/", directory=True))
             elif source.is_file():
-                add_bytes(archive, archive_name, source.read_bytes())
+                add_bytes(archive, archive_name, read_source_bytes(source))
 
     write_gzip_tar(path, write_entries)
 
@@ -123,7 +140,7 @@ def unity_assets() -> list[UnityAsset]:
             assets.append(
                 UnityAsset(
                     source if source.is_file() else None,
-                    meta_path.read_bytes(),
+                    read_source_bytes(meta_path),
                     target.as_posix(),
                     read_guid(meta_path),
                 )
@@ -135,7 +152,7 @@ def unity_assets() -> list[UnityAsset]:
         assets.append(
             UnityAsset(
                 source,
-                meta_path.read_bytes(),
+                read_source_bytes(meta_path),
                 (UNITY_TARGET_ROOT / filename).as_posix(),
                 read_guid(meta_path),
             )
@@ -155,7 +172,7 @@ def build_unitypackage(path: Path) -> None:
         for item in assets:
             archive.addfile(tar_info(f"{item.guid}/", directory=True))
             if item.source is not None:
-                add_bytes(archive, f"{item.guid}/asset", item.source.read_bytes())
+                add_bytes(archive, f"{item.guid}/asset", read_source_bytes(item.source))
             add_bytes(archive, f"{item.guid}/asset.meta", item.meta)
             add_bytes(archive, f"{item.guid}/pathname", item.pathname.encode("utf-8"))
 
