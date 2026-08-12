@@ -10,9 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.2"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.2-3ecf8e" /></a>
-  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.2/com.supabaseunity.client-0.2.0-beta.2.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
-  <a href="https://openupm.com/packages/com.supabaseunity.client/"><img alt="OpenUPM" src="https://img.shields.io/npm/v/com.supabaseunity.client?label=openupm&amp;registry_uri=https://package.openupm.com" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.3"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.3-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.3/com.supabaseunity.client-0.2.0-beta.3.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
   <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
@@ -46,7 +45,7 @@ This package keeps the platform plumbing out of your game code:
 - 🌍 **Runs across platforms** — WebGL, desktop, and mobile.
 - 🧰 **Feels at home in Unity** — `UnityWebRequest`, async APIs, and a coroutine bridge.
 - 🔌 **Uses the right transport** — browser bridges on WebGL, native WebSockets elsewhere.
-- 🪶 **Stays lightweight** — no dependency on the official Supabase .NET client.
+- 🪶 **Stays lightweight** — no dependency on `supabase-csharp` or another general-purpose .NET SDK.
 
 ---
 
@@ -75,13 +74,13 @@ This package keeps the platform plumbing out of your game code:
 In Unity, open **Window > Package Manager**, choose **Add package from git URL**, and paste:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.2
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.3
 ```
 
 ✅ **Done.** Newtonsoft Json.NET comes with it automatically.
 
 Prefer a file download? The
-[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.2)
+[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.3)
 also includes:
 
 - 📦 A `.unitypackage` for **Assets > Import Package > Custom Package**.
@@ -190,6 +189,8 @@ supabase.Functions;               // Edge Functions
 
 ---
 
+<a id="platform-support"></a>
+
 ## 🖥️ Platform support
 
 **Supported** = built and run. **Untested** = compiles, but still needs a real-world report.
@@ -209,9 +210,15 @@ supabase.Functions;               // Edge Functions
 
 ### ✅ Release checks
 
-- **41 EditMode tests** before each release.
-- **Credential scanning** across package contents.
-- **Package validation** for GUIDs, versions, release files, and GitHub Actions.
+- **License-free hosted checks** for credentials, GUIDs, versions, workflows, WebGL plugin
+  syntax, and deterministic release archives.
+- **A locally activated Unity release gate** for the complete EditMode suite, clean
+  `.unitypackage` import, and WebGL smoke build.
+- **New tagged releases include a public verification record** whose archive hashes must match
+  the files rebuilt from the release tag before GitHub publishes them.
+
+The hosted badge reports package integrity only; it does not claim that Unity ran in GitHub
+Actions. See [RELEASING.md](RELEASING.md) for the complete release boundary.
 
 📣 **Shipped a build?** Please file a
 [platform report](https://github.com/DorukTan/unity-supabase/issues/new?template=platform_report.yml).
@@ -282,7 +289,7 @@ answer remains searchable for the next developer.
 - 💰 **Use it in commercial games.**
 - 🏠 **Connect it to self-hosted Supabase.**
 - 🔧 **Fork it and make it yours.**
-- 🚫 **No paid tier, CCU fees, telemetry, or hosted-service lock-in.**
+- 🚫 **The SDK has no paid tier, usage fees, telemetry, or hosted component.**
 
 **MIT licensed. The code you install is the product.**
 

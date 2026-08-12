@@ -2,7 +2,7 @@
 
 ## 1. Configure Supabase
 
-Expose only the schemas/tables the game needs through the Data API. Enable Row Level Security and write policies for `anon` and `authenticated` before shipping a player build. The official [C# Data API setup](https://supabase.com/docs/reference/csharp/installing) explains the required grants.
+Expose only the schemas/tables the game needs through the Data API. Enable Row Level Security and write policies for `anon` and `authenticated` before shipping a player build. Supabase's [Data API security guide](https://supabase.com/docs/guides/api/securing-your-api) explains grants and Row Level Security.
 
 Create a `SupabaseSettings` asset and enter:
 
@@ -46,7 +46,7 @@ Write filters are applied before `UpdateAsync` and `DeleteAsync`. Always filter 
 
 ## 4. Auth and OAuth
 
-Password, OTP, OAuth with PKCE, SSO, anonymous sign-in, recovery, identity linking and MFA are on `client.Auth`. On mobile/desktop, configure a deep-link URL accepted by the Supabase Auth redirect allow-list. WebGL reads and sanitizes the initial browser callback URL. When persistence is enabled, WebGL stores the PKCE verifier and session in `localStorage`.
+Password, OTP, OAuth with PKCE, SSO, anonymous sign-in, recovery, identity linking and MFA are on `client.Auth`. On mobile/desktop, configure a deep-link URL accepted by the Supabase Auth redirect allow-list. WebGL reads and sanitizes the initial browser callback URL. PKCE verifiers always use `localStorage`; sessions use it only when persistence is enabled.
 
 Subscribe to `client.Auth.StateChanged` to update UI. Realtime channel tokens can be updated after an auth transition with `client.Realtime.SetAuthAsync()`.
 

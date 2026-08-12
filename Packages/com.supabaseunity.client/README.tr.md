@@ -1,16 +1,16 @@
 # Unity için Supabase
 
-Bu paket Unity 2021.3 LTS ile Unity 6 arasında aynı API ile Auth, Database, Realtime, Storage ve Edge Functions kullanmak için Unity’ye özgü bir istemci sağlar. WebGL’de tarayıcı WebSocket/localStorage köprüsü, diğer platformlarda native WebSocket ve `persistentDataPath` kullanır.
+Bu paket Unity 2021.3 LTS ile Unity 6 arasında aynı API ile Auth, Database, Realtime, Storage ve Edge Functions kullanmak için Unity’ye özgü bir istemci sağlar. WebGL’de tarayıcı WebSocket köprüsünü kullanır; diğer platformlarda native WebSocket kullanır. Oturum kalıcılığı varsayılan olarak kapalıdır. Açıldığında oturumlar WebGL’de `localStorage`, diğer platformlarda `persistentDataPath` altında saklanır.
 
 ## Hızlı başlangıç
 
 Package Manager’da **Add package from git URL** seçeneğine şunu gir:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.2
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.3
 ```
 
-Ardından **Assets > Create > Supabase > Settings** ile ayar dosyası oluştur. Supabase web sitesinde `createClient(projectUrl, publishableKey)` içine girdiğin proje URL’sini ve `sb_publishable_...` anahtarını aynen kullanabilirsin. Eski `anon` JWT anahtarları da desteklenir.
+Ardından **Assets > Create > Supabase > Settings** ile ayar dosyası oluştur. Supabase Dashboard’daki **Connect** ekranından proje URL’sini ve `sb_publishable_...` anahtarını alabilirsin. Eski `anon` JWT anahtarları da desteklenir.
 
 ```csharp
 using Supabase.Unity;

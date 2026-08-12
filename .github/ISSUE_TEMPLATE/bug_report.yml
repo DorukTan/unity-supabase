@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Questions about Supabase itself, Row Level Security policies, or PostgREST query
-        behaviour belong in [Supabase's channels](https://supabase.com/docs), not here.
+        behavior belong in [Supabase's channels](https://supabase.com/docs), not here.
         This tracker is for defects in the Unity package.
 
   - type: checkboxes
@@ -22,7 +22,7 @@ body:
     attributes:
       label: Package version
       description: From package.json, or the git tag you installed.
-      placeholder: 0.2.0-beta.2
+      placeholder: 0.2.0-beta.3
     validations:
       required: true
 

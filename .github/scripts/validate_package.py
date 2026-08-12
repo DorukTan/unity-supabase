@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -16,6 +19,8 @@ VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:-(?:alpha|beta|rc)\.\d+)?$")
 GUID_PATTERN = re.compile(r"(?m)^guid: ([0-9a-f]{32})$")
 PINNED_ACTION_PATTERN = re.compile(r"^[^@]+@[0-9a-f]{40}$")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+DEFAULT_RELEASE_VERIFICATION = ROOT / ".github" / "release-verification.json"
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 LIVE_CREDENTIAL_PATTERNS = {
     "Supabase API key": re.compile(r"sb_(?:secret|publishable)_[A-Za-z0-9_-]{20,}"),
@@ -48,8 +53,11 @@ def release_files() -> list[Path]:
         PACKAGE,
         ROOT / ".github",
         ROOT / "README.md",
+        ROOT / "CONTRIBUTING.md",
         ROOT / "LICENSE.md",
+        ROOT / "RELEASING.md",
         ROOT / "SECURITY.md",
+        ROOT / "SUPPORT.md",
         ROOT / ".gitattributes",
         ROOT / ".gitignore",
     ]
@@ -58,7 +66,13 @@ def release_files() -> list[Path]:
         if root.is_file():
             files.append(root)
         elif root.is_dir():
-            files.extend(path for path in root.rglob("*") if path.is_file())
+            files.extend(
+                path
+                for path in root.rglob("*")
+                if path.is_file()
+                and "__pycache__" not in path.parts
+                and path.suffix not in {".pyc", ".pyo"}
+            )
         else:
             fail(f"Required release path is missing: {root.relative_to(ROOT)}")
 
@@ -184,9 +198,106 @@ def validate_unity_meta() -> None:
             fail(f"Unity asset is missing its meta file: {path.relative_to(ROOT)}")
 
 
+def validate_release_verification(
+    version: str,
+    evidence_path: Path,
+    archives_directory: Path | None,
+) -> None:
+    required = archives_directory is not None
+    if not evidence_path.is_file():
+        if required:
+            fail(f"Release verification record is missing: {evidence_path}")
+        return
+
+    try:
+        evidence = json.loads(read_text(evidence_path))
+    except json.JSONDecodeError as exception:
+        fail(f"Invalid release verification JSON in {evidence_path}: {exception}")
+
+    if evidence.get("schemaVersion") != 1:
+        fail("Release verification schemaVersion must be 1")
+
+    recorded_version = evidence.get("packageVersion")
+    if not isinstance(recorded_version, str) or not VERSION_PATTERN.fullmatch(recorded_version):
+        fail("Release verification contains an invalid packageVersion")
+    if required and recorded_version != version:
+        fail(
+            f"Release verification is for {recorded_version}, but package.json declares {version}"
+        )
+
+    verified_at = evidence.get("verifiedAtUtc")
+    if not isinstance(verified_at, str) or not verified_at.endswith("Z"):
+        fail("Release verification verifiedAtUtc must be an ISO-8601 UTC timestamp")
+    try:
+        datetime.fromisoformat(verified_at.replace("Z", "+00:00"))
+    except ValueError:
+        fail("Release verification verifiedAtUtc is not a valid timestamp")
+
+    unity = evidence.get("unity")
+    if not isinstance(unity, dict):
+        fail("Release verification is missing its unity result")
+    editor_version = unity.get("editorVersion")
+    if not isinstance(editor_version, str) or not re.fullmatch(
+        r"[0-9]+\.[0-9]+\.[0-9]+[abfp][0-9]+", editor_version
+    ):
+        fail("Release verification contains an invalid Unity editor version")
+
+    tests = unity.get("editModeTests")
+    if not isinstance(tests, dict):
+        fail("Release verification is missing EditMode test results")
+    expected_test_fields = {"total", "passed", "failed", "skipped", "inconclusive"}
+    if set(tests) != expected_test_fields or any(
+        not isinstance(tests[field], int) or tests[field] < 0 for field in expected_test_fields
+    ):
+        fail("Release verification contains invalid EditMode test counts")
+    if (
+        tests["total"] == 0
+        or tests["passed"] != tests["total"]
+        or tests["failed"] != 0
+        or tests["skipped"] != 0
+        or tests["inconclusive"] != 0
+    ):
+        fail("Release verification does not show a fully passing EditMode suite")
+    if unity.get("cleanUnitypackageImport") != "passed":
+        fail("Release verification does not show a passing clean .unitypackage import")
+    if unity.get("webglBuild") != "passed":
+        fail("Release verification does not show a passing WebGL build")
+
+    archives = evidence.get("archives")
+    if not isinstance(archives, dict) or len(archives) != 2:
+        fail("Release verification must contain exactly two archive hashes")
+    expected_names = {
+        f"com.supabaseunity.client-{recorded_version}.tgz",
+        f"com.supabaseunity.client-{recorded_version}.unitypackage",
+    }
+    if set(archives) != expected_names:
+        fail("Release verification archive names do not match its package version")
+    if any(
+        not isinstance(digest, str) or not SHA256_PATTERN.fullmatch(digest)
+        for digest in archives.values()
+    ):
+        fail("Release verification contains an invalid SHA-256 digest")
+
+    if not required:
+        return
+
+    assert archives_directory is not None
+    for name, expected_digest in archives.items():
+        archive = archives_directory / name
+        if not archive.is_file():
+            fail(f"Verified release archive is missing: {archive}")
+        actual_digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        if actual_digest != expected_digest:
+            fail(
+                f"Release archive {name} does not match the locally verified archive. "
+                "Run verify_release.py again before tagging."
+            )
+
+
 def validate_workflows() -> None:
     workflow_dir = ROOT / ".github" / "workflows"
-    for workflow in workflow_dir.glob("*.yml"):
+    workflows = sorted([*workflow_dir.glob("*.yml"), *workflow_dir.glob("*.yaml")])
+    for workflow in workflows:
         text = read_text(workflow)
         if re.search(r"(?m)^\s*pull_request_target\s*:", text):
             fail(f"Unsafe pull_request_target trigger in {workflow.relative_to(ROOT)}")
@@ -197,12 +308,24 @@ def validate_workflows() -> None:
             if not PINNED_ACTION_PATTERN.fullmatch(action):
                 fail(f"GitHub Action is not pinned by commit SHA: {action}")
 
-    unity_workflow = read_text(workflow_dir / "unity-package-tests.yml")
-    if "workflow_dispatch:" not in unity_workflow:
-        fail("Licensed Unity tests must remain manually dispatchable")
+        for forbidden in ("UNITY_LICENSE", "UNITY_SERIAL", "game-ci/"):
+            if forbidden in text:
+                fail(
+                    f"Hosted workflows must remain license-free; found {forbidden} in "
+                    f"{workflow.relative_to(ROOT)}"
+                )
+
+    package_checks = read_text(workflow_dir / "package-checks.yml")
+    if not package_checks.startswith("name: License-free package checks"):
+        fail("package-checks.yml must state that hosted checks are license-free")
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--release-archives", type=Path)
+    parser.add_argument("--release-verification", type=Path)
+    args = parser.parse_args()
+
     files = release_files()
     version = validate_package_manifest()
     validate_client_info(version)
@@ -211,6 +334,15 @@ def main() -> int:
     validate_credentials_and_text(tracked_files(), check_trailing_whitespace=False)
     validate_unity_meta()
     validate_workflows()
+    evidence_path = (
+        args.release_verification.resolve()
+        if args.release_verification
+        else DEFAULT_RELEASE_VERIFICATION
+    )
+    archives_directory = (
+        args.release_archives.resolve() if args.release_archives else None
+    )
+    validate_release_verification(version, evidence_path, archives_directory)
     print(f"Validated Supabase Unity {version}: {len(files)} release files passed.")
     return 0
 

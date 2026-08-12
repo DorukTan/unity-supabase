@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest tagged alpha is supported while the public API is still evolving.
+Only the latest tagged prerelease is supported while the public API is still evolving.
 
 ## Reporting a vulnerability
 
@@ -18,7 +18,7 @@ This is a single-maintainer project. These are targets, not guarantees:
 
 - Initial acknowledgement: within 7 days.
 - Critical vulnerabilities: fix or documented mitigation targeted within 30 days.
-- Everything else: addressed in the next release.
+- Everything else: triaged for a future release.
 
 If a report goes unanswered for 30 days, you are free to disclose publicly. You will not be
 asked to wait longer than that.
