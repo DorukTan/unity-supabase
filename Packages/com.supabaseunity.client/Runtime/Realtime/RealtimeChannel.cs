@@ -20,6 +20,11 @@ namespace Supabase.Unity
         private readonly List<PostgresBinding> postgresBindings = new List<PostgresBinding>();
         private readonly Dictionary<string, List<Action<JToken>>> broadcastBindings
             = new Dictionary<string, List<Action<JToken>>>(StringComparer.Ordinal);
+        private readonly SemaphoreSlim subscriptionGate = new SemaphoreSlim(1, 1);
+        private readonly object recoveryGate = new object();
+        private CancellationTokenSource recoveryCancellation;
+        private bool recoveryRunning;
+        private RealtimeChannelRecoveryMode pendingRecoveryMode;
         private bool subscribedBeforeDisconnect;
 
         public string Topic { get; private set; }
@@ -28,6 +33,7 @@ namespace Supabase.Unity
         public JObject PresenceState { get; private set; } = new JObject();
         public event Action<JObject> PresenceSynchronized;
         public event Action<RealtimePresenceChange> PresenceChanged;
+        public event Action<RealtimeSystemMessage> SystemMessageReceived;
         public event Action<RealtimeChannelState> StateChanged;
 
         internal RealtimeChannel(RealtimeClient client, string topic, RealtimeChannelConfig config)
@@ -65,41 +71,37 @@ namespace Supabase.Unity
         public async Task<SupabaseResult> SubscribeAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (State == RealtimeChannelState.Joined) return SupabaseResult.Success();
-            SetState(RealtimeChannelState.Joining);
-            var payload = BuildJoinPayload();
-            var joinReference = client.NextReference();
-            var response = await client.PushAsync(Topic, "phx_join", payload,
-                TimeSpan.FromSeconds(10), cancellationToken, null, joinReference);
-            if (!response.IsSuccess)
-            {
-                SetState(RealtimeChannelState.Errored);
-                return SupabaseResult.Failure(response.Error, response.Metadata);
-            }
-            JoinReference = joinReference;
-            ApplyPostgresBindingIds(response.Data);
-            SetState(RealtimeChannelState.Joined);
-            subscribedBeforeDisconnect = true;
-            return SupabaseResult.Success(response.Metadata);
+            CancelRecovery();
+            return await SubscribeCoreAsync(cancellationToken, true, false);
         }
 
         public async Task<SupabaseResult> UnsubscribeAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            CancelRecovery();
             subscribedBeforeDisconnect = false;
-            if (State == RealtimeChannelState.Closed) return SupabaseResult.Success();
-            SetState(RealtimeChannelState.Leaving);
-            if (!client.IsConnected)
+            await subscriptionGate.WaitAsync(cancellationToken);
+            try
             {
-                SetState(RealtimeChannelState.Closed);
-                return SupabaseResult.Success();
+                if (State == RealtimeChannelState.Closed) return SupabaseResult.Success();
+                SetState(RealtimeChannelState.Leaving);
+                if (!client.IsConnected)
+                {
+                    JoinReference = null;
+                    SetState(RealtimeChannelState.Closed);
+                    return SupabaseResult.Success();
+                }
+                var response = await client.PushAsync(Topic, "phx_leave", new JObject(),
+                    TimeSpan.FromSeconds(10), cancellationToken, JoinReference);
+                JoinReference = null;
+                SetState(response.IsSuccess ? RealtimeChannelState.Closed : RealtimeChannelState.Errored);
+                return response.IsSuccess ? SupabaseResult.Success(response.Metadata) :
+                    SupabaseResult.Failure(response.Error, response.Metadata);
             }
-            var response = await client.PushAsync(Topic, "phx_leave", new JObject(),
-                TimeSpan.FromSeconds(10), cancellationToken, JoinReference);
-            JoinReference = null;
-            SetState(response.IsSuccess ? RealtimeChannelState.Closed : RealtimeChannelState.Errored);
-            return response.IsSuccess ? SupabaseResult.Success(response.Metadata) :
-                SupabaseResult.Failure(response.Error, response.Metadata);
+            finally
+            {
+                subscriptionGate.Release();
+            }
         }
 
         public async Task<SupabaseResult> SendBroadcastAsync(string eventName, object payload,
@@ -145,19 +147,33 @@ namespace Supabase.Unity
         internal async Task<SupabaseResult> ResubscribeAsync()
         {
             if (!subscribedBeforeDisconnect) return SupabaseResult.Success();
+            CancelRecovery();
             State = RealtimeChannelState.Closed;
             JoinReference = null;
-            return await SubscribeAsync(CancellationToken.None);
+            return await SubscribeCoreAsync(CancellationToken.None, false, true);
         }
 
         internal void NotifySocketClosed()
         {
+            CancelRecovery();
             if (State == RealtimeChannelState.Joined || State == RealtimeChannelState.Joining)
                 SetState(RealtimeChannelState.Errored);
         }
 
-        internal void Dispatch(string eventName, JObject payload)
+        internal async Task<SupabaseResult> RejoinAfterChannelFailureAsync(
+            CancellationToken cancellationToken)
         {
+            JoinReference = null;
+            SetState(RealtimeChannelState.Closed);
+            return await SubscribeCoreAsync(cancellationToken, false, true);
+        }
+
+        internal void Dispatch(string eventName, JObject payload, string joinReference = null)
+        {
+            if ((eventName == "system" || eventName == "phx_error" || eventName == "phx_close") &&
+                !string.IsNullOrEmpty(joinReference) &&
+                !string.Equals(joinReference, JoinReference, StringComparison.Ordinal))
+                return;
             if (eventName == "postgres_changes")
             {
                 DispatchPostgres(payload);
@@ -193,8 +209,149 @@ namespace Supabase.Unity
                 if (synchronized != null) synchronized(PresenceState);
                 return;
             }
-            if (eventName == "phx_error") SetState(RealtimeChannelState.Errored);
-            if (eventName == "phx_close") SetState(RealtimeChannelState.Closed);
+            if (eventName == "system")
+            {
+                DispatchSystemMessage(payload);
+                return;
+            }
+            if (eventName == "phx_error")
+            {
+                HandleChannelFailure(RealtimeChannelState.Errored, false);
+                return;
+            }
+            if (eventName == "phx_close")
+                HandleChannelFailure(RealtimeChannelState.Closed, true);
+        }
+
+        private async Task<SupabaseResult> SubscribeCoreAsync(
+            CancellationToken cancellationToken, bool rememberSubscription, bool requireSubscription)
+        {
+            await subscriptionGate.WaitAsync(cancellationToken);
+            try
+            {
+                if (requireSubscription && !subscribedBeforeDisconnect)
+                    return SupabaseResult.Success();
+                if (State == RealtimeChannelState.Joined)
+                    return SupabaseResult.Success();
+
+                SetState(RealtimeChannelState.Joining);
+                var payload = BuildJoinPayload();
+                var joinReference = client.NextReference();
+                var response = await client.PushAsync(Topic, "phx_join", payload,
+                    TimeSpan.FromSeconds(10), cancellationToken, null, joinReference);
+                if (!response.IsSuccess)
+                {
+                    SetState(RealtimeChannelState.Errored);
+                    return SupabaseResult.Failure(response.Error, response.Metadata);
+                }
+
+                JoinReference = joinReference;
+                ApplyPostgresBindingIds(response.Data);
+                pendingRecoveryMode = RealtimeChannelRecoveryMode.None;
+                SetState(RealtimeChannelState.Joined);
+                if (rememberSubscription)
+                    subscribedBeforeDisconnect = true;
+                return SupabaseResult.Success(response.Metadata);
+            }
+            finally
+            {
+                subscriptionGate.Release();
+            }
+        }
+
+        private void DispatchSystemMessage(JObject payload)
+        {
+            var message = new RealtimeSystemMessage
+            {
+                Message = (string)payload["message"],
+                Status = (string)payload["status"],
+                Extension = (string)payload["extension"],
+                Channel = (string)payload["channel"] ?? Topic,
+                RawPayload = payload
+            };
+            var handler = SystemMessageReceived;
+            if (handler != null) handler(message);
+
+            if (!message.IsError ||
+                !string.Equals(message.Extension, "system", StringComparison.OrdinalIgnoreCase))
+                return;
+            pendingRecoveryMode = ClassifySystemFailure(message.Message);
+        }
+
+        private void HandleChannelFailure(RealtimeChannelState state, bool clearPendingMode)
+        {
+            JoinReference = null;
+            SetState(state);
+            var mode = pendingRecoveryMode == RealtimeChannelRecoveryMode.None
+                ? RealtimeChannelRecoveryMode.Transient
+                : pendingRecoveryMode;
+            if (clearPendingMode)
+                pendingRecoveryMode = RealtimeChannelRecoveryMode.None;
+            RequestRecovery(mode);
+        }
+
+        private void RequestRecovery(RealtimeChannelRecoveryMode mode)
+        {
+            CancellationTokenSource cancellation;
+            lock (recoveryGate)
+            {
+                if (!subscribedBeforeDisconnect || recoveryRunning ||
+                    mode == RealtimeChannelRecoveryMode.None || mode == RealtimeChannelRecoveryMode.Manual)
+                    return;
+                recoveryRunning = true;
+                recoveryCancellation = new CancellationTokenSource();
+                cancellation = recoveryCancellation;
+            }
+            RunRecoveryAsync(mode, cancellation).Forget(client.ReportRecoveryError);
+        }
+
+        private async Task RunRecoveryAsync(RealtimeChannelRecoveryMode mode,
+            CancellationTokenSource cancellation)
+        {
+            try
+            {
+                await client.RecoverChannelAsync(this, mode, cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Unsubscribe, disposal, or a socket-wide reconnect superseded this recovery.
+            }
+            finally
+            {
+                lock (recoveryGate)
+                {
+                    if (recoveryCancellation == cancellation)
+                    {
+                        recoveryCancellation.Dispose();
+                        recoveryCancellation = null;
+                        recoveryRunning = false;
+                    }
+                }
+            }
+        }
+
+        private void CancelRecovery()
+        {
+            lock (recoveryGate)
+            {
+                if (recoveryCancellation != null)
+                    recoveryCancellation.Cancel();
+            }
+        }
+
+        private static RealtimeChannelRecoveryMode ClassifySystemFailure(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return RealtimeChannelRecoveryMode.Manual;
+            var normalized = message.ToLowerInvariant();
+            if (normalized.Contains("token has expired"))
+                return RealtimeChannelRecoveryMode.RefreshToken;
+            if (normalized.Contains("too many messages") || normalized.Contains("rate limit"))
+                return RealtimeChannelRecoveryMode.RateLimited;
+            if (normalized.Contains("server requested disconnect") ||
+                normalized.Contains("replication connection timeout"))
+                return RealtimeChannelRecoveryMode.Transient;
+            return RealtimeChannelRecoveryMode.Manual;
         }
 
         private JObject BuildJoinPayload()

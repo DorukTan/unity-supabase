@@ -55,4 +55,32 @@ namespace Supabase.Unity
         public JObject Leaves { get; internal set; }
         public JObject RawPayload { get; internal set; }
     }
+
+    /// <summary>A server notice about a Realtime channel or one of its extensions.</summary>
+    public sealed class RealtimeSystemMessage
+    {
+        public string Message { get; internal set; }
+        public string Status { get; internal set; }
+        public string Extension { get; internal set; }
+        public string Channel { get; internal set; }
+        public JObject RawPayload { get; internal set; }
+
+        public bool IsError
+        {
+            get
+            {
+                return string.Equals(Status, "error", StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(Status, "timeout", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
+
+    internal enum RealtimeChannelRecoveryMode
+    {
+        None,
+        Transient,
+        RefreshToken,
+        RateLimited,
+        Manual
+    }
 }

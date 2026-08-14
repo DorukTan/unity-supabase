@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.0-beta.4] - 2026-08-14
+
+### Added
+
+- Realtime channels now expose Supabase `system` notices through
+  `SystemMessageReceived`, including informational Postgres Changes notices that do not close
+  the channel.
+- A dependency-free loopback contract fixture now verifies Auth, Database, Storage, and Edge
+  Functions request/response boundaries as part of the normal EditMode suite.
+- EditMode coverage for channel error recovery, rate-limit cooldowns, expired-token refresh,
+  non-retryable failures, pending acknowledgements, and duplicate rejoin prevention. The suite
+  now contains 49 tests.
+
+### Fixed
+
+- Unexpected channel errors now rejoin only the affected channel with bounded backoff instead
+  of waiting for a socket-wide reconnect.
+- Expired Realtime JWTs are refreshed before rejoining, and rate-limited channels wait at
+  least 10 seconds before retrying.
+- Stale `phx_close` events can no longer create a second subscription after a channel has
+  already recovered.
+- Pending Realtime acknowledgements now fail immediately when the socket closes or the client
+  is disposed, and cancellation no longer leaves an acknowledgement entry behind until its
+  timeout expires.
+
 ## [0.2.0-beta.3] - 2026-08-12
 
 ### Changed

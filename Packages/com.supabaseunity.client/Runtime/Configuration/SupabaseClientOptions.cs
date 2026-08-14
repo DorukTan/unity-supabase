@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace Supabase.Unity
@@ -87,6 +89,9 @@ namespace Supabase.Unity
         public Func<IWebSocketTransport> WebSocketTransportFactory { get; set; }
         public IAuthCallbackProvider AuthCallbackProvider { get; set; }
         public ISupabaseLogger Logger { get; set; } = NullSupabaseLogger.Instance;
+
+        // Test seam for recovery timing. Production uses the runtime host delay.
+        internal Func<TimeSpan, CancellationToken, Task> RealtimeRecoveryDelay { get; set; }
 
         public SupabaseResolvedEndpoints ValidateAndResolve()
         {
