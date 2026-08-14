@@ -99,6 +99,176 @@ namespace Supabase.Unity.Tests
         }
 
         [Test]
+        public void Realtime_PostgresSystemNoticeIsExposedWithoutClosingChannel()
+        {
+            var socket = new RecordingWebSocketTransport();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate { return socket; };
+            using (var client = new SupabaseClient(options))
+            {
+                var channel = client.Realtime.Channel("system-notice");
+                RealtimeSystemMessage observed = null;
+                channel.SystemMessageReceived += delegate(RealtimeSystemMessage message)
+                {
+                    observed = message;
+                };
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+
+                socket.RaiseChannelEvent(channel.JoinReference, channel.Topic, "system", new JObject
+                {
+                    ["message"] = "Replication is temporarily degraded",
+                    ["status"] = "error",
+                    ["extension"] = "postgres_changes",
+                    ["channel"] = channel.Topic
+                });
+
+                Assert.IsNotNull(observed);
+                Assert.IsTrue(observed.IsError);
+                Assert.AreEqual("postgres_changes", observed.Extension);
+                Assert.AreEqual(RealtimeChannelState.Joined, channel.State);
+                Assert.AreEqual(1, CountSent(socket, "phx_join"));
+            }
+        }
+
+        [Test]
+        public void Realtime_PhxErrorAndCloseRejoinChannelOnlyOnce()
+        {
+            var socket = new RecordingWebSocketTransport();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate { return socket; };
+            options.RealtimeRecoveryDelay = delegate
+            {
+                return System.Threading.Tasks.Task.CompletedTask;
+            };
+            using (var client = new SupabaseClient(options))
+            {
+                var channel = client.Realtime.Channel("single-rejoin");
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+                var failedJoinReference = channel.JoinReference;
+
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "phx_error");
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "phx_close");
+
+                Assert.AreEqual(RealtimeChannelState.Joined, channel.State);
+                Assert.AreEqual(2, CountSent(socket, "phx_join"),
+                    "The error/close pair must produce one replacement join.");
+            }
+        }
+
+        [Test]
+        public void Realtime_RateLimitWaitsForCooldownBeforeRejoin()
+        {
+            var socket = new RecordingWebSocketTransport();
+            var observedDelay = TimeSpan.Zero;
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate { return socket; };
+            options.RealtimeRecoveryDelay = delegate(TimeSpan delay,
+                System.Threading.CancellationToken cancellationToken)
+            {
+                observedDelay = delay;
+                return System.Threading.Tasks.Task.CompletedTask;
+            };
+            using (var client = new SupabaseClient(options))
+            {
+                var channel = client.Realtime.Channel("rate-limited");
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+                var failedJoinReference = channel.JoinReference;
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "system", new JObject
+                {
+                    ["message"] = "Too many messages per second",
+                    ["status"] = "error",
+                    ["extension"] = "system",
+                    ["channel"] = channel.Topic
+                });
+
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "phx_close");
+
+                Assert.GreaterOrEqual(observedDelay, TimeSpan.FromSeconds(10));
+                Assert.AreEqual(RealtimeChannelState.Joined, channel.State);
+                Assert.AreEqual(2, CountSent(socket, "phx_join"));
+            }
+        }
+
+        [Test]
+        public void Realtime_NonRetryableSystemErrorStaysClosed()
+        {
+            var socket = new RecordingWebSocketTransport();
+            var recoveryDelays = 0;
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate { return socket; };
+            options.RealtimeRecoveryDelay = delegate
+            {
+                recoveryDelays++;
+                return System.Threading.Tasks.Task.CompletedTask;
+            };
+            using (var client = new SupabaseClient(options))
+            {
+                var channel = client.Realtime.Channel("invalid-token");
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+                var failedJoinReference = channel.JoinReference;
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "system", new JObject
+                {
+                    ["message"] = "Token has no exp claim",
+                    ["status"] = "error",
+                    ["extension"] = "system",
+                    ["channel"] = channel.Topic
+                });
+
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "phx_close");
+
+                Assert.AreEqual(RealtimeChannelState.Closed, channel.State);
+                Assert.AreEqual(0, recoveryDelays,
+                    "A non-retryable configuration error must not schedule recovery.");
+                Assert.AreEqual(1, CountSent(socket, "phx_join"));
+            }
+        }
+
+        [Test]
+        public void Realtime_ExpiredTokenRefreshesBeforeRejoin()
+        {
+            var refreshedSession = AuthTests.SessionJson.Replace("access-one", "access-two")
+                .Replace("refresh-one", "refresh-two");
+            var transport = new RecordingHttpTransport()
+                .Enqueue(200, AuthTests.SessionJson)
+                .Enqueue(200, refreshedSession);
+            var socket = new RecordingWebSocketTransport();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = transport;
+            options.WebSocketTransportFactory = delegate { return socket; };
+            options.RealtimeRecoveryDelay = delegate
+            {
+                return System.Threading.Tasks.Task.CompletedTask;
+            };
+            using (var client = new SupabaseClient(options))
+            {
+                Assert.IsTrue(client.Auth.SignInWithPasswordAsync("a@b.co", "secret")
+                    .GetAwaiter().GetResult().IsSuccess);
+                var channel = client.Realtime.Channel("expired-token");
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+                var failedJoinReference = channel.JoinReference;
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "system", new JObject
+                {
+                    ["message"] = "Token has expired",
+                    ["status"] = "error",
+                    ["extension"] = "system",
+                    ["channel"] = channel.Topic
+                });
+
+                socket.RaiseChannelEvent(failedJoinReference, channel.Topic, "phx_close");
+
+                Assert.AreEqual("access-two", client.Auth.CurrentSession.AccessToken);
+                StringAssert.Contains("grant_type=refresh_token", transport.LastRequest.Uri.Query);
+                var replacementJoin = LastSent(socket, "phx_join");
+                Assert.AreEqual("access-two", (string)replacementJoin[4]["access_token"]);
+                Assert.AreEqual(RealtimeChannelState.Joined, channel.State);
+            }
+        }
+
+        [Test]
         public void Realtime_PostgresBindingIdsIsolateFilteredCallbacks()
         {
             var socket = new RecordingWebSocketTransport
@@ -189,6 +359,89 @@ namespace Supabase.Unity.Tests
                 Assert.IsTrue(channel.SendBroadcastAsync("move", new { x = 1 })
                     .GetAwaiter().GetResult().IsSuccess);
             }
+        }
+
+        [Test]
+        public void Realtime_DisconnectFailsPendingAcknowledgementImmediately()
+        {
+            var socket = new RecordingWebSocketTransport();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate { return socket; };
+            using (var client = new SupabaseClient(options))
+            {
+                var channel = client.Realtime.Channel("pending-disconnect",
+                    new RealtimeChannelConfig { BroadcastAcknowledge = true });
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+
+                var pending = channel.SendBroadcastAsync("move", new { x = 1 });
+                Assert.IsFalse(pending.IsCompleted);
+                Assert.AreEqual(1, client.Realtime.PendingPushCount);
+
+                Assert.IsTrue(client.Realtime.DisconnectAsync().GetAwaiter().GetResult().IsSuccess);
+                var result = pending.GetAwaiter().GetResult();
+
+                Assert.IsFalse(result.IsSuccess);
+                Assert.AreEqual(SupabaseErrorKind.Transport, result.Error.Kind);
+                Assert.AreEqual(0, client.Realtime.PendingPushCount);
+            }
+        }
+
+        [Test]
+        public void Realtime_CancellationRemovesPendingAcknowledgement()
+        {
+            var socket = new RecordingWebSocketTransport();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate { return socket; };
+            using (var client = new SupabaseClient(options))
+            {
+                var channel = client.Realtime.Channel("pending-cancellation",
+                    new RealtimeChannelConfig { BroadcastAcknowledge = true });
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+                var previousContext = System.Threading.SynchronizationContext.Current;
+                System.Threading.SynchronizationContext.SetSynchronizationContext(null);
+                try
+                {
+                    using (var cancellation = new System.Threading.CancellationTokenSource())
+                    {
+                        var pending = channel.SendBroadcastAsync("move", new { x = 1 },
+                            cancellation.Token);
+                        Assert.AreEqual(1, client.Realtime.PendingPushCount);
+
+                        cancellation.Cancel();
+
+                        Assert.Catch<OperationCanceledException>(delegate
+                        {
+                            pending.GetAwaiter().GetResult();
+                        });
+                        Assert.AreEqual(0, client.Realtime.PendingPushCount);
+                    }
+                }
+                finally
+                {
+                    System.Threading.SynchronizationContext.SetSynchronizationContext(previousContext);
+                }
+            }
+        }
+
+        private static int CountSent(RecordingWebSocketTransport socket, string eventName)
+        {
+            var count = 0;
+            foreach (var message in socket.Sent)
+                if ((string)JArray.Parse(message)[3] == eventName) count++;
+            return count;
+        }
+
+        private static JArray LastSent(RecordingWebSocketTransport socket, string eventName)
+        {
+            for (var index = socket.Sent.Count - 1; index >= 0; index--)
+            {
+                var message = JArray.Parse(socket.Sent[index]);
+                if ((string)message[3] == eventName) return message;
+            }
+            Assert.Fail("No " + eventName + " message was sent.");
+            return null;
         }
     }
 }

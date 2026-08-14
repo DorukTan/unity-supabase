@@ -7,7 +7,7 @@ Bu paket Unity 2021.3 LTS ile Unity 6 arasında aynı API ile Auth, Database, Re
 Package Manager’da **Add package from git URL** seçeneğine şunu gir:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.3
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.4
 ```
 
 Ardından **Assets > Create > Supabase > Settings** ile ayar dosyası oluştur. Supabase Dashboard’daki **Connect** ekranından proje URL’sini ve `sb_publishable_...` anahtarını alabilirsin. Eski `anon` JWT anahtarları da desteklenir.

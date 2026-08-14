@@ -55,7 +55,11 @@ namespace Supabase.Unity
             Database = new DatabaseClient(Options, Endpoints.Database, transport, token);
             Storage = new StorageClient(Options, Endpoints.Storage, transport, token);
             Functions = new FunctionsClient(Options, Endpoints.Functions, transport, token);
-            Realtime = new RealtimeClient(Options, Endpoints.Realtime, token);
+            Realtime = new RealtimeClient(Options, Endpoints.Realtime, token,
+                delegate(CancellationToken cancellationToken)
+                {
+                    return Auth.RefreshSessionAsync(cancellationToken);
+                });
             Auth.StateChanged += OnAuthStateChanged;
         }
 

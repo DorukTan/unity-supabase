@@ -12,6 +12,7 @@ namespace Supabase.Unity
         private readonly SupabaseClientOptions options;
         private readonly Uri endpoint;
         private readonly Func<string> accessToken;
+        private readonly Func<CancellationToken, Task<SupabaseResult<AuthSession>>> refreshAccessToken;
         private readonly object gate = new object();
         private readonly SemaphoreSlim sendGate = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim connectionGate = new SemaphoreSlim(1, 1);
@@ -31,11 +32,13 @@ namespace Supabase.Unity
         public event Action<int, string> Disconnected;
         public event Action<Exception> Error;
 
-        internal RealtimeClient(SupabaseClientOptions options, Uri endpoint, Func<string> accessToken)
+        internal RealtimeClient(SupabaseClientOptions options, Uri endpoint, Func<string> accessToken,
+            Func<CancellationToken, Task<SupabaseResult<AuthSession>>> refreshAccessToken)
         {
             this.options = options;
             this.endpoint = endpoint;
             this.accessToken = accessToken;
+            this.refreshAccessToken = refreshAccessToken;
         }
 
         public async Task<SupabaseResult> ConnectAsync(
@@ -204,6 +207,79 @@ namespace Supabase.Unity
 
         internal string CurrentAccessToken { get { return accessToken(); } }
 
+        internal int PendingPushCount
+        {
+            get { lock (gate) return pending.Count; }
+        }
+
+        internal async Task RecoverChannelAsync(RealtimeChannel channel,
+            RealtimeChannelRecoveryMode mode, CancellationToken cancellationToken)
+        {
+            var minimumDelay = mode == RealtimeChannelRecoveryMode.RateLimited
+                ? TimeSpan.FromSeconds(10)
+                : TimeSpan.Zero;
+            for (var attempt = 0; !cancellationToken.IsCancellationRequested; attempt++)
+            {
+                await DelayForChannelRecoveryAsync(attempt, minimumDelay, cancellationToken);
+
+                if (mode == RealtimeChannelRecoveryMode.RefreshToken)
+                {
+                    if (refreshAccessToken == null)
+                    {
+                        LogRecoveryStopped(channel, "Auth token refresh is unavailable.");
+                        return;
+                    }
+                    var refreshed = await refreshAccessToken(cancellationToken);
+                    if (!refreshed.IsSuccess)
+                    {
+                        if (refreshed.Error != null && refreshed.Error.IsRetryable)
+                            continue;
+                        LogRecoveryStopped(channel, refreshed.Error == null
+                            ? "Auth token refresh failed."
+                            : refreshed.Error.Message);
+                        return;
+                    }
+                    mode = RealtimeChannelRecoveryMode.Transient;
+                    minimumDelay = TimeSpan.Zero;
+                }
+
+                // A socket-wide close has its own reconnect loop and will rejoin every channel.
+                if (!IsConnected)
+                    return;
+
+                var result = await channel.RejoinAfterChannelFailureAsync(cancellationToken);
+                if (result.IsSuccess)
+                    return;
+
+                var errorMessage = result.Error == null ? null : result.Error.Message;
+                if (Contains(errorMessage, "token has expired"))
+                {
+                    mode = RealtimeChannelRecoveryMode.RefreshToken;
+                    continue;
+                }
+                if (Contains(errorMessage, "too many messages") || Contains(errorMessage, "rate limit"))
+                {
+                    minimumDelay = TimeSpan.FromSeconds(10);
+                    continue;
+                }
+                if ((result.Error != null && result.Error.IsRetryable) ||
+                    Contains(errorMessage, "database") || Contains(errorMessage, "timeout") ||
+                    Contains(errorMessage, "server requested disconnect"))
+                    continue;
+
+                LogRecoveryStopped(channel, string.IsNullOrWhiteSpace(errorMessage)
+                    ? "The channel join was rejected."
+                    : errorMessage);
+                return;
+            }
+        }
+
+        internal void ReportRecoveryError(Exception exception)
+        {
+            if (!(exception is OperationCanceledException))
+                OnError(exception);
+        }
+
         internal async Task<SupabaseResult<JObject>> PushAsync(string topic, string eventName,
             JObject payload, TimeSpan timeout, CancellationToken cancellationToken,
             string joinReference = null, string messageReference = null)
@@ -216,25 +292,29 @@ namespace Supabase.Unity
             messageReference = messageReference ?? NextReference();
             var completion = new TaskCompletionSource<SupabaseResult<JObject>>();
             lock (gate) pending[messageReference] = completion;
-            var send = await SendRawAsync(new JArray(joinReference == null ? JValue.CreateNull() : new JValue(joinReference), messageReference, topic, eventName,
-                payload ?? new JObject()), cancellationToken);
-            if (!send.IsSuccess)
+            try
+            {
+                var send = await SendRawAsync(new JArray(
+                    joinReference == null ? JValue.CreateNull() : new JValue(joinReference),
+                    messageReference, topic, eventName, payload ?? new JObject()), cancellationToken);
+                if (!send.IsSuccess)
+                    return SupabaseResult<JObject>.Failure(send.Error);
+                if (completion.Task.IsCompleted)
+                    return await completion.Task;
+                using (cancellationToken.Register(delegate { completion.TrySetCanceled(); }))
+                {
+                    var timer = SupabaseRuntimeHost.Delay(timeout, CancellationToken.None);
+                    var finished = await Task.WhenAny(completion.Task, timer);
+                    if (finished == completion.Task) return await completion.Task;
+                }
+                return SupabaseResult<JObject>.Failure(SupabaseError.Create(SupabaseService.Realtime,
+                    SupabaseErrorKind.Timeout, "Realtime did not acknowledge the message before timeout.",
+                    retryable: true));
+            }
+            finally
             {
                 lock (gate) pending.Remove(messageReference);
-                return SupabaseResult<JObject>.Failure(send.Error);
             }
-            if (completion.Task.IsCompleted)
-                return await completion.Task;
-            using (cancellationToken.Register(delegate { completion.TrySetCanceled(); }))
-            {
-                var timer = SupabaseRuntimeHost.Delay(timeout, CancellationToken.None);
-                var finished = await Task.WhenAny(completion.Task, timer);
-                if (finished == completion.Task) return await completion.Task;
-            }
-            lock (gate) pending.Remove(messageReference);
-            return SupabaseResult<JObject>.Failure(SupabaseError.Create(SupabaseService.Realtime,
-                SupabaseErrorKind.Timeout, "Realtime did not acknowledge the message before timeout.",
-                retryable: true));
         }
 
         internal async Task<SupabaseResult> SendEventAsync(string topic, string eventName,
@@ -266,12 +346,38 @@ namespace Supabase.Unity
             finally { sendGate.Release(); }
         }
 
+        private Task DelayForChannelRecoveryAsync(int attempt, TimeSpan minimumDelay,
+            CancellationToken cancellationToken)
+        {
+            var delays = new[] { 1, 2, 5, 10 };
+            var delay = TimeSpan.FromSeconds(delays[Math.Min(attempt, delays.Length - 1)]);
+            if (delay < minimumDelay)
+                delay = minimumDelay;
+            return options.RealtimeRecoveryDelay == null
+                ? SupabaseRuntimeHost.Delay(delay, cancellationToken)
+                : options.RealtimeRecoveryDelay(delay, cancellationToken);
+        }
+
+        private void LogRecoveryStopped(RealtimeChannel channel, string reason)
+        {
+            options.Logger.Log(SupabaseLogLevel.Warning,
+                "Realtime channel recovery stopped for " + channel.Topic + ": " +
+                SupabaseHttp.Redact(reason));
+        }
+
+        private static bool Contains(string value, string expected)
+        {
+            return !string.IsNullOrWhiteSpace(value) &&
+                   value.IndexOf(expected, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private void OnMessage(string text)
         {
             try
             {
                 var message = JArray.Parse(text);
                 if (message.Count < 5) return;
+                var joinReference = message[0].Type == JTokenType.Null ? null : (string)message[0];
                 var messageReference = message[1].Type == JTokenType.Null ? null : (string)message[1];
                 var topic = (string)message[2];
                 var eventName = (string)message[3];
@@ -297,7 +403,8 @@ namespace Supabase.Unity
                 }
                 RealtimeChannel channel;
                 lock (gate) channels.TryGetValue(topic, out channel);
-                if (channel != null) SupabaseRuntimeHost.Post(delegate { channel.Dispatch(eventName, payload); });
+                if (channel != null)
+                    SupabaseRuntimeHost.Post(delegate { channel.Dispatch(eventName, payload, joinReference); });
             }
             catch (Exception exception) { OnError(exception); }
         }
@@ -310,6 +417,10 @@ namespace Supabase.Unity
 
         private void OnClosed(int code, string reason)
         {
+            FailPendingPushes(SupabaseError.Create(SupabaseService.Realtime,
+                SupabaseErrorKind.Transport,
+                "Realtime disconnected before acknowledging the message.",
+                details: reason, retryable: !manualClose));
             RealtimeChannel[] snapshot;
             lock (gate)
             {
@@ -320,6 +431,19 @@ namespace Supabase.Unity
             var handler = Disconnected;
             if (handler != null) SupabaseRuntimeHost.Post(delegate { handler(code, reason); });
             if (!manualClose && !disposed) ReconnectLoopAsync().Forget(OnError);
+        }
+
+        private void FailPendingPushes(SupabaseError error)
+        {
+            TaskCompletionSource<SupabaseResult<JObject>>[] snapshot;
+            lock (gate)
+            {
+                snapshot = new TaskCompletionSource<SupabaseResult<JObject>>[pending.Count];
+                pending.Values.CopyTo(snapshot, 0);
+                pending.Clear();
+            }
+            foreach (var completion in snapshot)
+                completion.TrySetResult(SupabaseResult<JObject>.Failure(error));
         }
 
         private void OnError(Exception exception)
@@ -427,6 +551,16 @@ namespace Supabase.Unity
             disposed = true;
             manualClose = true;
             if (lifetime != null) lifetime.Cancel();
+            FailPendingPushes(SupabaseError.Create(SupabaseService.Realtime,
+                SupabaseErrorKind.Transport,
+                "Realtime was disposed before acknowledging the message."));
+            RealtimeChannel[] snapshot;
+            lock (gate)
+            {
+                snapshot = new RealtimeChannel[channels.Count];
+                channels.Values.CopyTo(snapshot, 0);
+            }
+            foreach (var channel in snapshot) channel.NotifySocketClosed();
             if (socket != null) DetachAndDispose(socket);
             if (lifetime != null) lifetime.Dispose();
             sendGate.Dispose();

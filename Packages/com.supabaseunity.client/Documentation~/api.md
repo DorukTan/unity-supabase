@@ -91,12 +91,25 @@ room.OnPostgresChanges(new RealtimePostgresChangeFilter
 }, change => RefreshMatch(change.New<Match>()));
 
 room.PresenceSynchronized += state => RefreshPlayers(state);
+room.SystemMessageReceived += message =>
+{
+    if (message.IsError)
+        Debug.LogWarning($"Realtime {message.Extension}: {message.Message}");
+};
 await room.SubscribeAsync();
 await room.TrackAsync(new { player_id = playerId, online_at = DateTimeOffset.UtcNow });
 await room.SendBroadcastAsync("move", new { x = 4, y = 8 });
 ```
 
-The client sends heartbeats, reconnects with backoff, rejoins subscribed channels and adopts refreshed Auth JWTs.
+The client sends heartbeats, reconnects the socket with backoff, and rejoins subscribed
+channels. A channel-level `phx_error` or unexpected `phx_close` rejoins only that channel.
+Expired JWT notices refresh the Auth session before rejoining, while rate-limit notices apply
+a cooldown of at least 10 seconds.
+
+`SystemMessageReceived` exposes every server `system` notice. A failed `postgres_changes`
+extension is a degraded-service notice and does not close the channel. Unknown configuration
+or payload errors remain closed after the notice instead of retrying forever; correct the
+reported problem and call `SubscribeAsync` again.
 
 ## Storage
 

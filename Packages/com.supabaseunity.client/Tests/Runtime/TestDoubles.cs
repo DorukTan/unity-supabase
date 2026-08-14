@@ -194,6 +194,16 @@ namespace Supabase.Unity.Tests
         }
 
         internal void RaiseError(Exception exception) { var handler = Error; if (handler != null) handler(exception); }
+
+        internal void RaiseChannelEvent(string joinReference, string topic, string eventName,
+            JObject payload = null)
+        {
+            var handler = MessageReceived;
+            if (handler == null) return;
+            handler(new JArray(joinReference, null, topic, eventName, payload ?? new JObject())
+                .ToString(Newtonsoft.Json.Formatting.None));
+        }
+
         public void Dispose() { State = SupabaseWebSocketState.Closed; }
     }
 }

@@ -26,6 +26,11 @@ on the project directory, so close the Editor before running batchmode. Read `Te
 for the real result; batchmode stdout is not a reliable pass/fail signal. Do not commit
 `TestResults.xml`.
 
+The EditMode suite automatically starts a test-only HTTP server on `127.0.0.1` and checks the
+Auth, Database, Storage, and Functions wire contracts. It needs no Docker daemon, Supabase CLI,
+project credentials, or internet connection. This is a narrow request/response fixture, not a
+Supabase emulator and not a substitute for testing an application against its own project.
+
 ## The pre-push hook
 
 Hosted checks intentionally remain license-free, so a hook runs Unity locally on the machine
