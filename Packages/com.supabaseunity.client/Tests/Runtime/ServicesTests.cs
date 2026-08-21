@@ -10,6 +10,12 @@ namespace Supabase.Unity.Tests
     {
         private sealed class FunctionValue { public string hello { get; set; } }
 
+        [SupabaseTable("scores")]
+        private sealed class ReliabilityRow
+        {
+            [SupabaseColumn("id")] public int Id { get; set; }
+        }
+
         [Test]
         public void Function_UsesSelectedMethodAndDeserializes()
         {
@@ -31,6 +37,53 @@ namespace Supabase.Unity.Tests
                 Assert.IsTrue(result.IsSuccess);
                 Assert.AreEqual("unity", result.Data.hello);
                 Assert.AreEqual(SupabaseHttpMethod.Put, transport.LastRequest.Method);
+            }
+        }
+
+        [Test]
+        public void HttpServices_MapThrownTransportFailuresConsistently()
+        {
+            const string jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature";
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new ThrowingHttpTransport(new InvalidOperationException(
+                "network unavailable with Bearer " + jwt + " and sb_secret_server-value"));
+            using (var client = new SupabaseClient(options))
+            {
+                var auth = client.Auth.SignInWithPasswordAsync("starter@example.com", "secret")
+                    .GetAwaiter().GetResult();
+                var database = client.From<ReliabilityRow>().GetAsync().GetAwaiter().GetResult();
+                var storage = client.Storage.ListBucketsAsync().GetAwaiter().GetResult();
+                var function = client.Functions.InvokeAsync("health").GetAwaiter().GetResult();
+
+                AssertTransportError(auth.Error, SupabaseService.Auth);
+                AssertTransportError(database.Error, SupabaseService.Database);
+                AssertTransportError(storage.Error, SupabaseService.Storage);
+                AssertTransportError(function.Error, SupabaseService.Functions);
+            }
+        }
+
+        [Test]
+        public void HttpServices_MapThrownTimeoutsWithoutSwallowingCancellation()
+        {
+            var timeoutOptions = ConfigurationTests.ValidOptions();
+            timeoutOptions.HttpTransport = new ThrowingHttpTransport(new TimeoutException());
+            using (var client = new SupabaseClient(timeoutOptions))
+            {
+                var result = client.Functions.InvokeAsync("health").GetAwaiter().GetResult();
+                Assert.IsFalse(result.IsSuccess);
+                Assert.AreEqual(SupabaseErrorKind.Timeout, result.Error.Kind);
+                Assert.IsTrue(result.Error.IsRetryable);
+            }
+
+            var cancellationOptions = ConfigurationTests.ValidOptions();
+            cancellationOptions.HttpTransport = new ThrowingHttpTransport(
+                new OperationCanceledException());
+            using (var client = new SupabaseClient(cancellationOptions))
+            {
+                Assert.Catch<OperationCanceledException>(delegate
+                {
+                    client.Functions.InvokeAsync("health").GetAwaiter().GetResult();
+                });
             }
         }
 
@@ -95,6 +148,41 @@ namespace Supabase.Unity.Tests
                 Assert.AreEqual(2, sockets.Count);
                 Assert.AreEqual(RealtimeChannelState.Joined, channel.State);
                 StringAssert.Contains("phx_join", sockets[1].Sent[0]);
+            }
+        }
+
+        [Test]
+        public void Realtime_RepeatedReconnectsKeepOneLiveSubscription()
+        {
+            var sockets = new List<RecordingWebSocketTransport>();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate
+            {
+                var socket = new RecordingWebSocketTransport();
+                sockets.Add(socket);
+                return socket;
+            };
+            using (var client = new SupabaseClient(options))
+            {
+                var channel = client.Realtime.Channel("reconnect-stress");
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+
+                for (var attempt = 0; attempt < 20; attempt++)
+                    Assert.IsTrue(client.Realtime.ReconnectAsync().GetAwaiter().GetResult().IsSuccess);
+
+                Assert.AreEqual(21, sockets.Count);
+                Assert.AreEqual(RealtimeChannelState.Joined, channel.State);
+                Assert.AreEqual(0, client.Realtime.PendingPushCount);
+                for (var index = 0; index < sockets.Count; index++)
+                {
+                    Assert.AreEqual(1, CountSent(sockets[index], "phx_join"),
+                        "Each connection must carry exactly one join for the channel.");
+                    Assert.AreEqual(index == sockets.Count - 1
+                            ? SupabaseWebSocketState.Open
+                            : SupabaseWebSocketState.Closed,
+                        sockets[index].State);
+                }
             }
         }
 
@@ -388,6 +476,38 @@ namespace Supabase.Unity.Tests
         }
 
         [Test]
+        public void Realtime_DisposeFailsPendingAcknowledgementImmediately()
+        {
+            var socket = new RecordingWebSocketTransport();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = new RecordingHttpTransport();
+            options.WebSocketTransportFactory = delegate { return socket; };
+            var client = new SupabaseClient(options);
+            try
+            {
+                var channel = client.Realtime.Channel("pending-dispose",
+                    new RealtimeChannelConfig { BroadcastAcknowledge = true });
+                Assert.IsTrue(channel.SubscribeAsync().GetAwaiter().GetResult().IsSuccess);
+
+                var pending = channel.SendBroadcastAsync("move", new { x = 1 });
+                Assert.IsFalse(pending.IsCompleted);
+                Assert.AreEqual(1, client.Realtime.PendingPushCount);
+
+                client.Dispose();
+                var result = pending.GetAwaiter().GetResult();
+
+                Assert.IsFalse(result.IsSuccess);
+                Assert.AreEqual(SupabaseErrorKind.Transport, result.Error.Kind);
+                StringAssert.Contains("disposed", result.Error.Message);
+                Assert.AreEqual(0, client.Realtime.PendingPushCount);
+            }
+            finally
+            {
+                client.Dispose();
+            }
+        }
+
+        [Test]
         public void Realtime_CancellationRemovesPendingAcknowledgement()
         {
             var socket = new RecordingWebSocketTransport();
@@ -431,6 +551,17 @@ namespace Supabase.Unity.Tests
             foreach (var message in socket.Sent)
                 if ((string)JArray.Parse(message)[3] == eventName) count++;
             return count;
+        }
+
+        private static void AssertTransportError(SupabaseError error, SupabaseService service)
+        {
+            Assert.IsNotNull(error);
+            Assert.AreEqual(SupabaseErrorKind.Transport, error.Kind);
+            Assert.AreEqual(service, error.Service);
+            Assert.IsTrue(error.IsRetryable);
+            StringAssert.DoesNotContain("eyJhbGci", error.Message);
+            StringAssert.DoesNotContain("sb_secret_", error.Message);
+            StringAssert.Contains("[REDACTED]", error.Message);
         }
 
         private static JArray LastSent(RecordingWebSocketTransport socket, string eventName)

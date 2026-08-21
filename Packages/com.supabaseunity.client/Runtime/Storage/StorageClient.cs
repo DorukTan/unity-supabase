@@ -85,7 +85,7 @@ namespace Supabase.Unity
                 body, accessToken());
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<T>.Failure(SupabaseHttp.Error(SupabaseService.Storage, response), metadata);
@@ -151,7 +151,7 @@ namespace Supabase.Unity
             request.DownloadChunk = chunk;
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<byte[]>.Failure(SupabaseHttp.Error(SupabaseService.Storage, response), metadata);
@@ -277,7 +277,7 @@ namespace Supabase.Unity
             foreach (var header in uploadOptions.Headers) request.Headers[header.Key] = header.Value;
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<StorageFileResult>.Failure(
@@ -312,7 +312,7 @@ namespace Supabase.Unity
             if (headers != null) foreach (var header in headers) request.Headers[header.Key] = header.Value;
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<T>.Failure(SupabaseHttp.Error(SupabaseService.Storage, response), metadata);

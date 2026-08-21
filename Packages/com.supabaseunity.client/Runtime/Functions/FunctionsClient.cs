@@ -82,7 +82,7 @@ namespace Supabase.Unity
                 request.Headers[header.Key] = header.Value;
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<FunctionResponse>.Failure(

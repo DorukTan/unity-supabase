@@ -70,7 +70,7 @@ namespace Supabase.Unity
             ApplyCount(request.Headers, count);
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<T>.Failure(SupabaseHttp.Error(SupabaseService.Database, response), metadata);
@@ -242,7 +242,7 @@ namespace Supabase.Unity
             DatabaseClient.ApplyCount(request.Headers, count);
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<string>.Failure(
@@ -310,7 +310,7 @@ namespace Supabase.Unity
             ApplyReadHeaders(request);
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<IReadOnlyList<T>>.Failure(
@@ -345,7 +345,7 @@ namespace Supabase.Unity
             request.Headers["Accept"] = "application/vnd.pgrst.object+json";
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<T>.Failure(SupabaseHttp.Error(SupabaseService.Database, response), metadata);
@@ -377,7 +377,7 @@ namespace Supabase.Unity
                 DatabaseClient.AppendPrefer(request.Headers, "missing=default");
             try
             {
-                var response = await transport.SendAsync(request, cancellationToken);
+                var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
                 var metadata = SupabaseHttp.Metadata(response);
                 if (!response.IsSuccessStatusCode)
                     return SupabaseResult<IReadOnlyList<T>>.Failure(
