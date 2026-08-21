@@ -31,6 +31,9 @@ Auth, Database, Storage, and Functions wire contracts. It needs no Docker daemon
 project credentials, or internet connection. This is a narrow request/response fixture, not a
 Supabase emulator and not a substitute for testing an application against its own project.
 
+For an opt-in PlayMode check against a real local or isolated hosted Supabase stack, see the
+[live acceptance guide](Packages/com.supabaseunity.client/Documentation~/live-acceptance.md).
+
 ## The pre-push hook
 
 Hosted checks intentionally remain license-free, so a hook runs Unity locally on the machine
