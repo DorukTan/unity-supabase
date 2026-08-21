@@ -14,6 +14,9 @@
   retry classification and credential redaction.
 - Regressions for repeated Realtime reconnects and disposal with an outstanding acknowledgement.
   The EditMode suite now contains 54 tests.
+- Realtime now negotiates Phoenix protocol 2.0 to match its five-element array wire format.
+- An opt-in PlayMode acceptance suite and reproducible local Supabase scaffold covering Auth,
+  PostgREST, Realtime, Storage, and Edge Functions without adding runtime dependencies.
 
 ## [0.2.0-beta.4] - 2026-08-14
 

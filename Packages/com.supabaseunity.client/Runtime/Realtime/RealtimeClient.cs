@@ -522,7 +522,7 @@ namespace Supabase.Unity
             return SupabaseHttp.Combine(new Uri(root), string.Empty, new[]
             {
                 new KeyValuePair<string, string>("apikey", options.PublishableKey),
-                new KeyValuePair<string, string>("vsn", "1.0.0")
+                new KeyValuePair<string, string>("vsn", "2.0.0")
             });
         }
 

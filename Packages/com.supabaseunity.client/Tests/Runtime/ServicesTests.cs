@@ -117,6 +117,7 @@ namespace Supabase.Unity.Tests
                 var result = channel.SubscribeAsync().GetAwaiter().GetResult();
                 Assert.IsTrue(result.IsSuccess);
                 StringAssert.Contains("apikey=sb_publishable_test-value", socket.ConnectedUri.Query);
+                StringAssert.Contains("vsn=2.0.0", socket.ConnectedUri.Query);
                 Assert.IsFalse(socket.ConnectedHeaders.ContainsKey("Authorization"));
                 var join = JArray.Parse(socket.Sent[0]);
                 Assert.AreEqual("realtime:scores", (string)join[2]);
