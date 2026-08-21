@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "packageVersion": "0.2.0-beta.4",
-  "verifiedAtUtc": "2026-08-14T12:47:53Z",
+  "packageVersion": "0.2.0-beta.5",
+  "verifiedAtUtc": "2026-08-21T17:09:33Z",
   "unity": {
     "editorVersion": "6000.4.8f1",
     "editModeTests": {
-      "total": 49,
-      "passed": 49,
+      "total": 54,
+      "passed": 54,
       "failed": 0,
       "skipped": 0,
       "inconclusive": 0
@@ -15,7 +15,7 @@
     "webglBuild": "passed"
   },
   "archives": {
-    "com.supabaseunity.client-0.2.0-beta.4.tgz": "219c3dde6bb8a7e73e187e1704084fe383499728a697ba03f439e8f4f10287aa",
-    "com.supabaseunity.client-0.2.0-beta.4.unitypackage": "bb0f69e2a25718196153d873b351a7e4109a2fffe7f8811a02edc376a59b2653"
+    "com.supabaseunity.client-0.2.0-beta.5.tgz": "0c5f117092f4b920fa6ea5e45e4399e2b6129d6f3b83b02371d3af2ab76ffd06",
+    "com.supabaseunity.client-0.2.0-beta.5.unitypackage": "3445ff8d0d0ca36c2ece58376096010052407fb6fdd771845247c334ea0e5dc9"
   }
 }

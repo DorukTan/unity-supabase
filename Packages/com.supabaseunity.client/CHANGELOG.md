@@ -1,12 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0-beta.5] - 2026-08-21
 
 ### Fixed
 
 - Exceptions thrown by custom HTTP transports now become retryable `Transport` results across
   Auth, Database, Storage, and Edge Functions. `TimeoutException` becomes a `Timeout` result,
   while caller cancellation continues to throw `OperationCanceledException`.
+- Realtime now negotiates Phoenix protocol 2.0 to match its five-element array wire format.
 
 ### Added
 
@@ -14,7 +15,6 @@
   retry classification and credential redaction.
 - Regressions for repeated Realtime reconnects and disposal with an outstanding acknowledgement.
   The EditMode suite now contains 54 tests.
-- Realtime now negotiates Phoenix protocol 2.0 to match its five-element array wire format.
 - An opt-in PlayMode acceptance suite and reproducible local Supabase scaffold covering Auth,
   PostgREST, Realtime, Storage, and Edge Functions without adding runtime dependencies.
 
