@@ -73,6 +73,53 @@ namespace Supabase.Unity.Tests
             }
         }
 
+        [Test]
+        public void HttpBoundary_MapsServiceFailuresAndRedactsSecrets()
+        {
+            using (var fixture = new LoopbackSupabaseFixture(RespondWithFailure))
+            {
+                var options = ConfigurationTests.ValidOptions();
+                options.ProjectUrl = fixture.ProjectUrl.AbsoluteUri;
+                options.HttpTransport = new LoopbackHttpTransport();
+                var previousContext = SynchronizationContext.Current;
+                SynchronizationContext.SetSynchronizationContext(null);
+                try
+                {
+                    using (var client = new SupabaseClient(options))
+                    {
+                        var auth = client.Auth.SignInWithPasswordAsync("starter@example.com", "secret")
+                            .GetAwaiter().GetResult();
+                        AssertHttpError(auth.Error, SupabaseService.Auth, 401,
+                            "invalid_credentials", false);
+                        StringAssert.DoesNotContain("access-token-value", auth.Error.RawResponse);
+
+                        var database = client.From<Score>().GetAsync().GetAwaiter().GetResult();
+                        AssertHttpError(database.Error, SupabaseService.Database, 403, "42501", false);
+                        Assert.AreEqual("RLS denied this row", database.Error.Details);
+                        Assert.AreEqual("Check the table policy", database.Error.Hint);
+
+                        var storage = client.Storage.From("avatars").UploadAsync("players/7.bin",
+                            new byte[] { 1 }).GetAwaiter().GetResult();
+                        AssertHttpError(storage.Error, SupabaseService.Storage, 429,
+                            "Too Many Requests", true);
+
+                        var function = client.Functions.InvokeAsync("health").GetAwaiter().GetResult();
+                        AssertHttpError(function.Error, SupabaseService.Functions, 500, null, true);
+                        StringAssert.DoesNotContain("eyJhbGci", function.Error.Message);
+                        StringAssert.DoesNotContain("sb_secret_", function.Error.Message);
+                        StringAssert.Contains("[REDACTED]", function.Error.Message);
+                    }
+                }
+                finally
+                {
+                    SynchronizationContext.SetSynchronizationContext(previousContext);
+                }
+
+                fixture.ThrowIfFaulted();
+                Assert.AreEqual(4, fixture.Requests.Count);
+            }
+        }
+
         private static ContractHttpResponse Respond(ContractHttpRequest request)
         {
             if (request.Target.StartsWith("/auth/v1/token?", StringComparison.Ordinal))
@@ -89,6 +136,45 @@ namespace Supabase.Unity.Tests
             if (request.Target == "/functions/v1/health")
                 return ContractHttpResponse.Json(200, "{\"accepted\":true}");
             return ContractHttpResponse.Json(404, "{\"message\":\"Unexpected contract route.\"}");
+        }
+
+        private static ContractHttpResponse RespondWithFailure(ContractHttpRequest request)
+        {
+            if (request.Target.StartsWith("/auth/v1/token?", StringComparison.Ordinal))
+                return ContractHttpResponse.Json(401,
+                    "{\"code\":\"invalid_credentials\",\"message\":\"Invalid login credentials\"," +
+                    "\"access_token\":\"access-token-value\"}");
+            if (request.Target.StartsWith("/rest/v1/scores?", StringComparison.Ordinal))
+                return ContractHttpResponse.Json(403,
+                    "{\"code\":\"42501\",\"message\":\"row violates row-level security policy\"," +
+                    "\"details\":\"RLS denied this row\",\"hint\":\"Check the table policy\"}");
+            if (request.Target == "/storage/v1/object/avatars/players/7.bin")
+                return ContractHttpResponse.Json(429,
+                    "{\"statusCode\":\"429\",\"error\":\"Too Many Requests\"," +
+                    "\"message\":\"Rate limit exceeded\"}");
+            if (request.Target == "/functions/v1/health")
+            {
+                return new ContractHttpResponse
+                {
+                    StatusCode = 500,
+                    ContentType = "text/plain",
+                    Body = Encoding.UTF8.GetBytes(
+                        "upstream failed with Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature " +
+                        "and sb_secret_server-value")
+                };
+            }
+            return ContractHttpResponse.Json(404, "{\"message\":\"Unexpected contract route.\"}");
+        }
+
+        private static void AssertHttpError(SupabaseError error, SupabaseService service,
+            int statusCode, string code, bool retryable)
+        {
+            Assert.IsNotNull(error);
+            Assert.AreEqual(SupabaseErrorKind.Http, error.Kind);
+            Assert.AreEqual(service, error.Service);
+            Assert.AreEqual(statusCode, error.StatusCode);
+            Assert.AreEqual(code, error.Code);
+            Assert.AreEqual(retryable, error.IsRetryable);
         }
 
         private static void AssertRequests(System.Collections.Generic.IReadOnlyList<ContractHttpRequest> requests)

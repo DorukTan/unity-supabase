@@ -96,7 +96,25 @@ namespace Supabase.Unity
             SupabaseHttpRequest request,
             CancellationToken cancellationToken)
         {
-            return await transport.SendAsync(request, cancellationToken);
+            try
+            {
+                return await transport.SendAsync(request, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (TimeoutException)
+            {
+                return new SupabaseHttpResponse { TimedOut = true };
+            }
+            catch (Exception exception)
+            {
+                return new SupabaseHttpResponse
+                {
+                    TransportError = Redact(exception.Message)
+                };
+            }
         }
 
         internal static SupabaseResponseMetadata Metadata(SupabaseHttpResponse response)

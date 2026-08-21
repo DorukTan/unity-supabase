@@ -59,6 +59,25 @@ namespace Supabase.Unity.Tests
         public void Dispose() { }
     }
 
+    internal sealed class ThrowingHttpTransport : IHttpTransport
+    {
+        private readonly Exception exception;
+
+        internal ThrowingHttpTransport(Exception exception)
+        {
+            this.exception = exception ?? throw new ArgumentNullException("exception");
+        }
+
+        public Task<SupabaseHttpResponse> SendAsync(SupabaseHttpRequest request,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw exception;
+        }
+
+        public void Dispose() { }
+    }
+
     /// <summary>
     /// Serves queued responses immediately, then holds every later request open until
     /// <see cref="Release"/> is called. <see cref="RecordingHttpTransport"/> always completes

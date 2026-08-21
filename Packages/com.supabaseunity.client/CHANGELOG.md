@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Exceptions thrown by custom HTTP transports now become retryable `Transport` results across
+  Auth, Database, Storage, and Edge Functions. `TimeoutException` becomes a `Timeout` result,
+  while caller cancellation continues to throw `OperationCanceledException`.
+
+### Added
+
+- Loopback coverage for Auth, PostgREST, Storage, and Edge Functions error responses, including
+  retry classification and credential redaction.
+- Regressions for repeated Realtime reconnects and disposal with an outstanding acknowledgement.
+  The EditMode suite now contains 54 tests.
+
 ## [0.2.0-beta.4] - 2026-08-14
 
 ### Added
