@@ -214,8 +214,9 @@ def validate_release_verification(
     except json.JSONDecodeError as exception:
         fail(f"Invalid release verification JSON in {evidence_path}: {exception}")
 
-    if evidence.get("schemaVersion") != 1:
-        fail("Release verification schemaVersion must be 1")
+    schema_version = evidence.get("schemaVersion")
+    if schema_version not in {1, 2}:
+        fail("Release verification schemaVersion must be 1 or 2")
 
     recorded_version = evidence.get("packageVersion")
     if not isinstance(recorded_version, str) or not VERSION_PATTERN.fullmatch(recorded_version):
@@ -224,6 +225,8 @@ def validate_release_verification(
         fail(
             f"Release verification is for {recorded_version}, but package.json declares {version}"
         )
+    if required and schema_version != 2:
+        fail("New release archives require release verification schemaVersion 2")
 
     verified_at = evidence.get("verifiedAtUtc")
     if not isinstance(verified_at, str) or not verified_at.endswith("Z"):
@@ -260,8 +263,24 @@ def validate_release_verification(
         fail("Release verification does not show a fully passing EditMode suite")
     if unity.get("cleanUnitypackageImport") != "passed":
         fail("Release verification does not show a passing clean .unitypackage import")
-    if unity.get("webglBuild") != "passed":
-        fail("Release verification does not show a passing WebGL build")
+    if schema_version == 1:
+        if unity.get("webglBuild") != "passed":
+            fail("Release verification does not show a passing WebGL build")
+    else:
+        player_builds = unity.get("playerBuilds")
+        expected_player_builds = {
+            "webgl",
+            "windows",
+            "android",
+            "iosXcodeProject",
+        }
+        if not isinstance(player_builds, dict) or set(player_builds) != expected_player_builds:
+            fail(
+                "Release verification must contain WebGL, Windows, Android, and iOS "
+                "Xcode project build results"
+            )
+        if any(result != "passed" for result in player_builds.values()):
+            fail("Release verification does not show fully passing player builds")
 
     archives = evidence.get("archives")
     if not isinstance(archives, dict) or len(archives) != 2:

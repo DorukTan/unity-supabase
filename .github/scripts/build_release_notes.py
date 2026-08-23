@@ -77,6 +77,14 @@ def build_notes(
         assert isinstance(unity, dict)
         tests = unity["editModeTests"]
         assert isinstance(tests, dict)
+        player_builds = unity.get("playerBuilds")
+        if isinstance(player_builds, dict):
+            player_build_summary = (
+                "- WebGL, Windows, and Android smoke players built successfully.\n"
+                "- Unity generated the iOS Xcode project successfully."
+            )
+        else:
+            player_build_summary = "- The WebGL smoke player built successfully."
         verification_download = (
             "| Verification record | Local Unity release-gate results | "
             f"[Download JSON]({release_root}/release-verification.json) |\n"
@@ -88,7 +96,7 @@ This release passed the local Unity release gate with **Unity {unity['editorVers
 
 - **{tests['passed']}/{tests['total']} EditMode tests** passed.
 - The generated `.unitypackage` compiled after import into a clean Unity project.
-- The WebGL smoke player built successfully.
+{player_build_summary}
 
 The hosted release job rebuilt both archives and matched them against the attached
 [verification record]({release_root}/release-verification.json) before publishing.

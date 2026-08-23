@@ -10,7 +10,7 @@ Database, Realtime, Storage and Edge Functions APIs for WebGL, desktop and mobil
 In Unity, open **Window > Package Manager**, select **Add package from git URL**, and enter:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.6
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.7
 ```
 
 Release tarballs and `.unitypackage` files are available on the

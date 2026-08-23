@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.2.0-beta.7] - 2026-08-23
+
+### Changed
+
+- The local release gate now builds the cleanly imported `.unitypackage` for WebGL, Windows,
+  and Android, then generates an iOS Xcode project from the same probe scene.
+- Public release verification now records each platform build separately and rejects a release
+  if any required target is missing or failed. The iOS result covers Unity compilation and
+  project generation; Xcode compilation, signing, and hardware testing remain separate.
+
 ## [0.2.0-beta.6] - 2026-08-23
 
 ### Fixed

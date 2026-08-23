@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.6"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.6-3ecf8e" /></a>
-  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.6/com.supabaseunity.client-0.2.0-beta.6.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.7"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.7-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.7/com.supabaseunity.client-0.2.0-beta.7.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
   <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
@@ -74,13 +74,13 @@ This package keeps the platform plumbing out of your game code:
 In Unity, open **Window > Package Manager**, choose **Add package from git URL**, and paste:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.6
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.7
 ```
 
 ✅ **Done.** Newtonsoft Json.NET comes with it automatically.
 
 Prefer a file download? The
-[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.6)
+[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.7)
 also includes:
 
 - 📦 A `.unitypackage` for **Assets > Import Package > Custom Package**.
@@ -213,7 +213,8 @@ supabase.Functions;               // Edge Functions
 - **License-free hosted checks** for credentials, GUIDs, versions, workflows, WebGL plugin
   syntax, and deterministic release archives.
 - **A locally activated Unity release gate** for the complete EditMode suite, clean
-  `.unitypackage` import, and WebGL smoke build.
+  `.unitypackage` import, WebGL, Windows, and Android smoke builds, and iOS Xcode project
+  generation.
 - **New tagged releases include a public verification record** whose archive hashes must match
   the files rebuilt from the release tag before GitHub publishes them.
 

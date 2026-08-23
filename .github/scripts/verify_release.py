@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "Packages" / "com.supabaseunity.client"
 PROJECT_VERSION = ROOT / "ProjectSettings" / "ProjectVersion.txt"
 DEFAULT_EVIDENCE = ROOT / ".github" / "release-verification.json"
-WEBGL_SUCCESS_MARKER = "SUPABASE_RELEASE_WEBGL_OK"
+PLAYER_BUILD_SUCCESS_MARKER = "SUPABASE_RELEASE_PLAYER_OK"
 CLEAN_IMPORT_SUCCESS_MARKER = "SUPABASE_RELEASE_CLEAN_IMPORT_OK"
 
 CLEAN_IMPORT_VERIFIER = r"""using System;
@@ -47,41 +47,71 @@ public static class SupabaseUnityCleanImportVerifier
 
     public static void BuildWebGL()
     {
-        var outputPath = Environment.GetEnvironmentVariable("SUPABASE_UNITY_WEBGL_OUTPUT");
+        BuildPlayerTarget(BuildTargetGroup.WebGL, BuildTarget.WebGL, "webgl", true);
+    }
+
+    public static void BuildWindows()
+    {
+        BuildPlayerTarget(
+            BuildTargetGroup.Standalone, BuildTarget.StandaloneWindows64, "windows", false);
+    }
+
+    public static void BuildAndroid()
+    {
+        BuildPlayerTarget(BuildTargetGroup.Android, BuildTarget.Android, "android", false);
+    }
+
+    public static void BuildIosProject()
+    {
+        BuildPlayerTarget(BuildTargetGroup.iOS, BuildTarget.iOS, "iosXcodeProject", true);
+    }
+
+    private static void BuildPlayerTarget(
+        BuildTargetGroup targetGroup,
+        BuildTarget target,
+        string evidenceName,
+        bool outputIsDirectory)
+    {
+        var outputPath = Environment.GetEnvironmentVariable("SUPABASE_UNITY_PLAYER_OUTPUT");
         if (string.IsNullOrWhiteSpace(outputPath))
-            throw new InvalidOperationException("SUPABASE_UNITY_WEBGL_OUTPUT is not set.");
+            throw new InvalidOperationException("SUPABASE_UNITY_PLAYER_OUTPUT is not set.");
 
         var scenePath = "Assets/SupabaseUnityReleaseVerification.unity";
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var gameObject = new GameObject("Supabase Unity Build Probe");
         gameObject.AddComponent<SupabaseUnityBuildProbe>();
         if (!EditorSceneManager.SaveScene(scene, scenePath))
-            throw new InvalidOperationException("Could not save the WebGL verification scene.");
+            throw new InvalidOperationException("Could not save the release verification scene.");
 
-        if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.WebGL &&
-            !EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.WebGL, BuildTarget.WebGL))
+        if (EditorUserBuildSettings.activeBuildTarget != target &&
+            !EditorUserBuildSettings.SwitchActiveBuildTarget(targetGroup, target))
         {
-            throw new InvalidOperationException("Unity could not switch to the WebGL build target.");
+            throw new InvalidOperationException(
+                "Unity could not switch to the " + evidenceName + " build target.");
         }
 
         outputPath = Path.GetFullPath(outputPath);
-        Directory.CreateDirectory(outputPath);
+        var outputDirectory = outputIsDirectory ? outputPath : Path.GetDirectoryName(outputPath);
+        if (string.IsNullOrWhiteSpace(outputDirectory))
+            throw new InvalidOperationException("Could not resolve the player output directory.");
+        Directory.CreateDirectory(outputDirectory);
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
             scenes = new[] { scenePath },
             locationPathName = outputPath,
-            target = BuildTarget.WebGL,
+            target = target,
             options = BuildOptions.None
         });
         if (report.summary.result != BuildResult.Succeeded)
         {
             throw new InvalidOperationException(
-                "WebGL build failed with result " + report.summary.result +
+                evidenceName + " build failed with result " + report.summary.result +
                 " and " + report.summary.totalErrors + " errors.");
         }
 
         Debug.Log(
-            "SUPABASE_RELEASE_WEBGL_OK bytes=" + report.summary.totalSize +
+            "SUPABASE_RELEASE_PLAYER_OK target=" + evidenceName +
+            " bytes=" + report.summary.totalSize +
             " output=" + report.summary.outputPath);
     }
 }
@@ -380,11 +410,20 @@ def verify_clean_unitypackage_import(
     return project
 
 
-def build_webgl(unity: Path, project: Path, temporary: Path) -> None:
-    output = temporary / "webgl-build"
-    log = temporary / "webgl-build.log"
+def build_player(
+    unity: Path,
+    project: Path,
+    temporary: Path,
+    *,
+    name: str,
+    command_line_target: str,
+    execute_method: str,
+    output: Path,
+    expected_output: Path,
+) -> None:
+    log = temporary / f"{name}-build.log"
     environment = os.environ.copy()
-    environment["SUPABASE_UNITY_WEBGL_OUTPUT"] = str(output)
+    environment["SUPABASE_UNITY_PLAYER_OUTPUT"] = str(output)
     run_unity(
         unity,
         [
@@ -393,17 +432,59 @@ def build_webgl(unity: Path, project: Path, temporary: Path) -> None:
             "-projectPath",
             str(project),
             "-buildTarget",
-            "WebGL",
+            command_line_target,
             "-executeMethod",
-            "SupabaseUnityCleanImportVerifier.BuildWebGL",
+            execute_method,
         ],
         log,
-        "Build WebGL smoke player",
+        f"Build {name} smoke target",
         environment=environment,
-        required_marker=WEBGL_SUCCESS_MARKER,
+        required_marker=f"{PLAYER_BUILD_SUCCESS_MARKER} target={name}",
     )
-    if not (output / "index.html").is_file():
-        raise VerificationError("WebGL build reported success but produced no index.html")
+    if not expected_output.is_file():
+        raise VerificationError(
+            f"{name} build reported success but did not produce {expected_output}"
+        )
+
+
+def build_players(unity: Path, project: Path, temporary: Path) -> dict[str, str]:
+    builds = [
+        {
+            "name": "webgl",
+            "command_line_target": "WebGL",
+            "execute_method": "SupabaseUnityCleanImportVerifier.BuildWebGL",
+            "output": temporary / "webgl-build",
+            "expected_output": temporary / "webgl-build" / "index.html",
+        },
+        {
+            "name": "windows",
+            "command_line_target": "Win64",
+            "execute_method": "SupabaseUnityCleanImportVerifier.BuildWindows",
+            "output": temporary / "windows-build" / "SupabaseUnityBuildProbe.exe",
+            "expected_output": temporary / "windows-build" / "SupabaseUnityBuildProbe.exe",
+        },
+        {
+            "name": "android",
+            "command_line_target": "Android",
+            "execute_method": "SupabaseUnityCleanImportVerifier.BuildAndroid",
+            "output": temporary / "android-build" / "SupabaseUnityBuildProbe.apk",
+            "expected_output": temporary / "android-build" / "SupabaseUnityBuildProbe.apk",
+        },
+        {
+            "name": "iosXcodeProject",
+            "command_line_target": "iOS",
+            "execute_method": "SupabaseUnityCleanImportVerifier.BuildIosProject",
+            "output": temporary / "ios-build",
+            "expected_output": (
+                temporary / "ios-build" / "Unity-iPhone.xcodeproj" / "project.pbxproj"
+            ),
+        },
+    ]
+    results: dict[str, str] = {}
+    for build in builds:
+        build_player(unity, project, temporary, **build)
+        results[str(build["name"])] = "passed"
+    return results
 
 
 def sha256(path: Path) -> str:
@@ -419,10 +500,11 @@ def write_evidence(
     version: str,
     unity_version: str,
     tests: dict[str, int],
+    player_builds: dict[str, str],
     archives: list[Path],
 ) -> None:
     evidence = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "packageVersion": version,
         "verifiedAtUtc": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
             "+00:00", "Z"
@@ -431,7 +513,7 @@ def write_evidence(
             "editorVersion": unity_version,
             "editModeTests": tests,
             "cleanUnitypackageImport": "passed",
-            "webglBuild": "passed",
+            "playerBuilds": player_builds,
         },
         "archives": {archive.name: sha256(archive) for archive in sorted(archives)},
     }
@@ -495,14 +577,21 @@ def main() -> int:
         tests = run_editmode_tests(unity, temporary)
         unitypackage = archives / f"com.supabaseunity.client-{version}.unitypackage"
         clean_project = verify_clean_unitypackage_import(unity, unitypackage, temporary)
-        build_webgl(unity, clean_project, temporary)
+        player_builds = build_players(unity, clean_project, temporary)
 
         release_archives = [
             archives / f"com.supabaseunity.client-{version}.tgz",
             unitypackage,
         ]
         candidate_evidence = temporary / "release-verification.json"
-        write_evidence(candidate_evidence, version, unity_version, tests, release_archives)
+        write_evidence(
+            candidate_evidence,
+            version,
+            unity_version,
+            tests,
+            player_builds,
+            release_archives,
+        )
         run_command(
             [
                 sys.executable,
@@ -535,7 +624,7 @@ def main() -> int:
     print("\nRelease verification passed:")
     print(f"  EditMode: {tests['passed']}/{tests['total']} passed")
     print("  Clean .unitypackage import: passed")
-    print("  WebGL smoke build: passed")
+    print("  Player smoke targets: WebGL, Windows, Android, and iOS Xcode project passed")
     print(f"  Archives: {output}")
     print(f"  Verification record: {evidence_path}")
     return 0

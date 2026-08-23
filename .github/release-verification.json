@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
-  "packageVersion": "0.2.0-beta.6",
-  "verifiedAtUtc": "2026-08-23T18:05:07Z",
+  "schemaVersion": 2,
+  "packageVersion": "0.2.0-beta.7",
+  "verifiedAtUtc": "2026-08-23T19:11:08Z",
   "unity": {
     "editorVersion": "6000.4.8f1",
     "editModeTests": {
@@ -12,10 +12,15 @@
       "inconclusive": 0
     },
     "cleanUnitypackageImport": "passed",
-    "webglBuild": "passed"
+    "playerBuilds": {
+      "webgl": "passed",
+      "windows": "passed",
+      "android": "passed",
+      "iosXcodeProject": "passed"
+    }
   },
   "archives": {
-    "com.supabaseunity.client-0.2.0-beta.6.tgz": "9ce5f71ab6be88af835215037a53ec3ca29493da9fe34c1d15e4f07d4f302515",
-    "com.supabaseunity.client-0.2.0-beta.6.unitypackage": "433d68970e4375f6c2f80836a7336e830df3011e4464abeb0e73ab7405c5361c"
+    "com.supabaseunity.client-0.2.0-beta.7.tgz": "31f1b7b8e65b6e8272b8350fd17e883e49b00e905fe38668b8ea7e44a379f283",
+    "com.supabaseunity.client-0.2.0-beta.7.unitypackage": "da2abb46264814658e2c7b754444de5cf8f6cd4b08c56006685b12b093f066da"
   }
 }

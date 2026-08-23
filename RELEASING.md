@@ -8,7 +8,9 @@ test run.
 ## Prerequisites
 
 - The Unity version in `ProjectSettings/ProjectVersion.txt`, activated through Unity Hub.
-- The WebGL Build Support module for that editor version.
+- WebGL, Windows, Android, and iOS Build Support modules for that editor version. The iOS
+  check generates an Xcode project; producing and running the final app still requires macOS,
+  Xcode, signing, and hardware.
 - Python 3.
 - The project closed in Unity while the command-line checks run.
 
@@ -44,8 +46,10 @@ record after all of these checks pass:
 - The complete EditMode test suite in the project's configured Unity version.
 - Import and compilation of the generated `.unitypackage` in a newly created temporary Unity
   project with its Newtonsoft Json.NET dependency installed.
-- A WebGL player build from a minimal scene in that clean temporary project, with a component
-  referencing the imported runtime assembly.
+- WebGL, Windows, and Android player builds from a minimal scene in that clean temporary
+  project, with a component referencing the imported runtime assembly.
+- iOS Xcode project generation from the same imported package and probe scene. This verifies
+  Unity compilation and export, not Xcode compilation, signing, or a hardware run.
 - SHA-256 matching between the tested local archives and the archives rebuilt by the hosted
   release workflow.
 
