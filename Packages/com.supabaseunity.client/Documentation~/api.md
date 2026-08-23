@@ -26,6 +26,34 @@ await client.Auth.VerifyOtpAsync(code, AuthOtpType.Email, email);
 await client.Auth.SignOutAsync(AuthSignOutScope.Local);
 ```
 
+`Global` and `Local` sign-out clear the current local session. `Others` revokes every other
+session for the user while preserving the current session and does not emit `SignedOut`.
+
+Concurrent `RefreshSessionAsync` calls share one token request. Canceling one caller stops that
+caller's wait without canceling the refresh for other callers; disposing the client cancels it.
+
+When session-changing Auth calls overlap, the operation started most recently owns the local
+session. An older response that arrives later returns `auth_operation_superseded` instead of
+replacing or clearing newer state. `StateChanged` notifications follow the same accepted order;
+superseded operations do not emit an event for a newer session.
+
+After an Auth operation adopts a new local session state, its durable session-store commit is the
+operation's commit point and is allowed to finish even if that caller cancels. Cancellation before
+the session is adopted still cancels the request normally.
+
+Session-store reads, writes, and removals are serialized. A delayed startup read is ignored if
+the local Auth session changes before that read finishes, so restarting the game cannot restore
+state that already lost an in-memory ordering decision.
+
+Profile and identity responses are applied only while the same user is active and no newer user
+operation has started. Otherwise, the older call returns `auth_operation_superseded`. A token
+refresh for the same user does not supersede the response.
+
+Auth failures use `SupabaseError.Code` for both server codes and stable client codes such as
+`not_authenticated`, `auth_operation_superseded`, `auth_session_missing`,
+`auth_response_invalid`, `auth_session_restore_failed`, `auth_callback_provider_missing`, and
+`pkce_verifier_missing`. OAuth callback errors retain the provider's standard OAuth error code.
+
 OAuth uses PKCE and returns the authorization URI whether or not `OpenBrowser` is enabled:
 
 ```csharp

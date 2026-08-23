@@ -114,6 +114,8 @@ namespace Supabase.Unity.Tests
             Requests.Add(request);
             if (queued.Count > 0)
                 return Task.FromResult(queued.Dequeue());
+            if (cancellationToken.CanBeCanceled)
+                cancellationToken.Register(delegate { gate.TrySetCanceled(); });
             return gate.Task;
         }
 
@@ -133,6 +135,262 @@ namespace Supabase.Unity.Tests
         }
 
         public void Dispose() { }
+    }
+
+    /// <summary>
+    /// Serves ordinary requests immediately while holding refresh-token requests open. This
+    /// allows tests to complete a newer sign-in or sign-out before the older refresh returns.
+    /// </summary>
+    internal sealed class RefreshGatedHttpTransport : IHttpTransport
+    {
+        private readonly Queue<SupabaseHttpResponse> immediate = new Queue<SupabaseHttpResponse>();
+        private readonly TaskCompletionSource<SupabaseHttpResponse> refreshGate
+            = new TaskCompletionSource<SupabaseHttpResponse>();
+
+        internal readonly List<SupabaseHttpRequest> Requests = new List<SupabaseHttpRequest>();
+
+        internal RefreshGatedHttpTransport Enqueue(int statusCode, string body)
+        {
+            immediate.Enqueue(NewResponse(statusCode, body));
+            return this;
+        }
+
+        public Task<SupabaseHttpResponse> SendAsync(SupabaseHttpRequest request,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Requests.Add(request);
+            if (request.Uri.Query.IndexOf("grant_type=refresh_token", StringComparison.Ordinal) >= 0)
+                return refreshGate.Task;
+            if (immediate.Count == 0)
+                throw new InvalidOperationException("No immediate HTTP response was queued.");
+            return Task.FromResult(immediate.Dequeue());
+        }
+
+        internal void ReleaseRefresh(int statusCode, string body)
+        {
+            refreshGate.TrySetResult(NewResponse(statusCode, body));
+        }
+
+        private static SupabaseHttpResponse NewResponse(int statusCode, string body)
+        {
+            return new SupabaseHttpResponse
+            {
+                StatusCode = statusCode,
+                Body = System.Text.Encoding.UTF8.GetBytes(body ?? string.Empty)
+            };
+        }
+
+        public void Dispose() { }
+    }
+
+    /// <summary>
+    /// Holds the first request whose URI contains a selected fragment while serving every other
+    /// request from an immediate queue. This makes out-of-order Auth responses deterministic.
+    /// </summary>
+    internal sealed class OneRequestGatedHttpTransport : IHttpTransport
+    {
+        private readonly string gatedUriFragment;
+        private readonly Queue<SupabaseHttpResponse> immediate = new Queue<SupabaseHttpResponse>();
+        private readonly TaskCompletionSource<SupabaseHttpResponse> gate
+            = new TaskCompletionSource<SupabaseHttpResponse>();
+        private bool requestGated;
+
+        internal readonly List<SupabaseHttpRequest> Requests = new List<SupabaseHttpRequest>();
+
+        internal OneRequestGatedHttpTransport(string gatedUriFragment)
+        {
+            this.gatedUriFragment = gatedUriFragment;
+        }
+
+        internal OneRequestGatedHttpTransport Enqueue(int statusCode, string body)
+        {
+            immediate.Enqueue(NewResponse(statusCode, body));
+            return this;
+        }
+
+        public Task<SupabaseHttpResponse> SendAsync(SupabaseHttpRequest request,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Requests.Add(request);
+            if (!requestGated && request.Uri.AbsoluteUri.IndexOf(gatedUriFragment,
+                StringComparison.Ordinal) >= 0)
+            {
+                requestGated = true;
+                return gate.Task;
+            }
+            if (immediate.Count == 0)
+                throw new InvalidOperationException("No immediate HTTP response was queued.");
+            return Task.FromResult(immediate.Dequeue());
+        }
+
+        internal void Release(int statusCode, string body)
+        {
+            gate.TrySetResult(NewResponse(statusCode, body));
+        }
+
+        private static SupabaseHttpResponse NewResponse(int statusCode, string body)
+        {
+            return new SupabaseHttpResponse
+            {
+                StatusCode = statusCode,
+                Body = System.Text.Encoding.UTF8.GetBytes(body ?? string.Empty)
+            };
+        }
+
+        public void Dispose() { }
+    }
+
+    /// <summary>
+    /// In-memory session storage that can hold one read or mutation open. It captures reads when
+    /// they start and applies mutations when they finish, matching the ordering hazards of real
+    /// asynchronous platform storage without relying on timing.
+    /// </summary>
+    internal sealed class GatedSessionStore : ISessionStore
+    {
+        private readonly object sync = new object();
+        private readonly Dictionary<string, string> values = new Dictionary<string, string>();
+        private TaskCompletionSource<bool> readGate;
+        private TaskCompletionSource<bool> mutationGate;
+        private bool gateNextRead;
+        private bool gateNextMutation;
+        private bool gatedMutationStarted;
+
+        internal string StoredValue
+        {
+            get
+            {
+                lock (sync)
+                {
+                    foreach (var value in values.Values)
+                        return value;
+                    return null;
+                }
+            }
+        }
+
+        internal bool GatedMutationStarted
+        {
+            get
+            {
+                lock (sync) return gatedMutationStarted;
+            }
+        }
+
+        internal void GateNextGet()
+        {
+            lock (sync)
+            {
+                if (gateNextRead)
+                    throw new InvalidOperationException("A session-store read is already gated.");
+                readGate = new TaskCompletionSource<bool>();
+                gateNextRead = true;
+            }
+        }
+
+        internal void GateNextMutation()
+        {
+            lock (sync)
+            {
+                if (gateNextMutation)
+                    throw new InvalidOperationException("A session-store mutation is already gated.");
+                mutationGate = new TaskCompletionSource<bool>();
+                gateNextMutation = true;
+                gatedMutationStarted = false;
+            }
+        }
+
+        internal void ReleaseGet()
+        {
+            TaskCompletionSource<bool> pending;
+            lock (sync) pending = readGate;
+            if (pending == null)
+                throw new InvalidOperationException("No session-store read is gated.");
+            pending.TrySetResult(true);
+        }
+
+        internal void ReleaseMutation()
+        {
+            TaskCompletionSource<bool> pending;
+            lock (sync) pending = mutationGate;
+            if (pending == null)
+                throw new InvalidOperationException("No session-store mutation is gated.");
+            pending.TrySetResult(true);
+        }
+
+        public async Task<string> GetAsync(
+            string key,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string value;
+            Task wait = null;
+            lock (sync)
+            {
+                values.TryGetValue(key, out value);
+                if (gateNextRead)
+                {
+                    gateNextRead = false;
+                    wait = readGate.Task;
+                }
+            }
+            if (wait != null)
+                await WaitWithCancellationAsync(wait, cancellationToken);
+            return value;
+        }
+
+        public async Task SetAsync(
+            string key,
+            string value,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await WaitForMutationAsync(cancellationToken);
+            lock (sync) values[key] = value;
+        }
+
+        public async Task RemoveAsync(
+            string key,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await WaitForMutationAsync(cancellationToken);
+            lock (sync) values.Remove(key);
+        }
+
+        private async Task WaitForMutationAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Task wait = null;
+            lock (sync)
+            {
+                if (gateNextMutation)
+                {
+                    gateNextMutation = false;
+                    gatedMutationStarted = true;
+                    wait = mutationGate.Task;
+                }
+            }
+            if (wait != null)
+                await WaitWithCancellationAsync(wait, cancellationToken);
+        }
+
+        private static async Task WaitWithCancellationAsync(
+            Task task,
+            CancellationToken cancellationToken)
+        {
+            if (!cancellationToken.CanBeCanceled)
+            {
+                await task;
+                return;
+            }
+            var canceled = new TaskCompletionSource<bool>();
+            using (cancellationToken.Register(delegate { canceled.TrySetResult(true); }))
+            {
+                if (task != await Task.WhenAny(task, canceled.Task))
+                    throw new OperationCanceledException(cancellationToken);
+            }
+            await task;
+        }
     }
 
     internal sealed class FakeCallbackProvider : IAuthCallbackProvider, IAuthCallbackSanitizer

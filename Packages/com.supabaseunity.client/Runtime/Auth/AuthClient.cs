@@ -23,9 +23,17 @@ namespace Supabase.Unity
         private readonly IAuthCallbackProvider callbackProvider;
         private readonly string sessionKey;
         private readonly string pkceKey;
+        private readonly object sessionGate = new object();
         private readonly object refreshGate = new object();
+        private readonly Queue<Action> stateNotifications = new Queue<Action>();
+        private readonly SemaphoreSlim sessionStoreGate = new SemaphoreSlim(1, 1);
+        private readonly CancellationTokenSource lifetimeCancellation = new CancellationTokenSource();
         private CancellationTokenSource refreshLoopCancellation;
         private Task<SupabaseResult<AuthSession>> refreshTask;
+        private long sessionOperationRevision;
+        private long sessionRevision;
+        private long userOperationRevision;
+        private bool stateNotificationScheduled;
         private bool initialized;
         private bool disposed;
 
@@ -61,17 +69,24 @@ namespace Supabase.Unity
             if (initialized)
                 return SupabaseResult<AuthSession>.Success(CurrentSession);
 
+            AuthSession sessionAtInitialize;
+            long restoreRevision;
+            CaptureCurrentSession(out sessionAtInitialize, out restoreRevision);
             try
             {
-                var persisted = await sessionStore.GetAsync(sessionKey, cancellationToken);
-                if (!string.IsNullOrWhiteSpace(persisted))
+                if (sessionAtInitialize == null)
                 {
-                    CurrentSession = SupabaseJson.Deserialize<AuthSession>(persisted);
-                    if (CurrentSession != null)
+                    var persisted = await ReadPersistedSessionAsync(cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(persisted))
                     {
-                        SupabaseKeyValidator.RejectElevatedKey(CurrentSession.AccessToken,
-                            "a persisted user session");
-                        CurrentSession.NormalizeExpiry();
+                        var restored = SupabaseJson.Deserialize<AuthSession>(persisted);
+                        if (restored != null)
+                        {
+                            SupabaseKeyValidator.RejectElevatedKey(restored.AccessToken,
+                                "a persisted user session");
+                            restored.NormalizeExpiry();
+                        }
+                        TryReplaceCurrentSession(restoreRevision, restored);
                     }
                 }
             }
@@ -81,11 +96,12 @@ namespace Supabase.Unity
             }
             catch (Exception exception)
             {
-                await SafeRemoveSessionAsync(CancellationToken.None);
+                await PersistSessionAsync(CancellationToken.None);
                 return SupabaseResult<AuthSession>.Failure(SupabaseError.Create(
                     SupabaseService.Auth,
                     SupabaseErrorKind.Serialization,
                     "The persisted Supabase session could not be read.",
+                    "auth_session_restore_failed",
                     details: exception.Message));
             }
 
@@ -99,7 +115,7 @@ namespace Supabase.Unity
                     return refreshed;
             }
 
-            Notify(AuthChangeEvent.InitialSession);
+            QueueStateChanged(AuthChangeEvent.InitialSession);
 
             if (callbackProvider != null && callbackProvider.InitialCallback != null)
             {
@@ -125,8 +141,10 @@ namespace Supabase.Unity
             AuthSignUpOptions signUpOptions = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(email, "email");
             Require(password, "password");
+            var sessionOperation = BeginSessionOperation(cancellationToken);
             signUpOptions = signUpOptions ?? new AuthSignUpOptions();
             var body = new JObject
             {
@@ -143,8 +161,9 @@ namespace Supabase.Unity
             if (!response.IsSuccess)
                 return response;
             var session = response.Data == null ? null : response.Data.GetSession();
-            if (session != null)
-                await AdoptSessionAsync(session, AuthChangeEvent.SignedIn, cancellationToken);
+            if (session != null && !await AdoptSessionAsync(session, AuthChangeEvent.SignedIn,
+                sessionOperation, cancellationToken))
+                return SupabaseResult<AuthResponse>.Failure(SessionOperationSuperseded(), response.Metadata);
             return response;
         }
 
@@ -153,14 +172,16 @@ namespace Supabase.Unity
             string password,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(emailOrPhone, "emailOrPhone");
             Require(password, "password");
+            var sessionOperation = BeginSessionOperation(cancellationToken);
             var body = new JObject { ["password"] = password };
             body[emailOrPhone.IndexOf('@') >= 0 ? "email" : "phone"] = emailOrPhone;
             return await RequestAndAdoptSessionAsync("token", new[]
             {
                 Pair("grant_type", "password")
-            }, body, AuthChangeEvent.SignedIn, cancellationToken);
+            }, body, AuthChangeEvent.SignedIn, sessionOperation, cancellationToken);
         }
 
         public async Task<SupabaseResult<AuthSession>> SignInAnonymouslyAsync(
@@ -168,11 +189,13 @@ namespace Supabase.Unity
             string captchaToken = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
+            var sessionOperation = BeginSessionOperation(cancellationToken);
             var body = new JObject();
             Add(body, "data", data);
             Add(body, "captcha_token", captchaToken);
             return await RequestAndAdoptSessionAsync("signup", null, body, AuthChangeEvent.SignedIn,
-                cancellationToken);
+                sessionOperation, cancellationToken);
         }
 
         public async Task<SupabaseResult> SignInWithOtpAsync(
@@ -207,7 +230,9 @@ namespace Supabase.Unity
             string redirectTo = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(token, "token");
+            var sessionOperation = BeginSessionOperation(cancellationToken);
             var body = new JObject { ["type"] = OtpType(type) };
             body[string.IsNullOrWhiteSpace(emailOrPhone) ? "token_hash" : "token"] = token;
             if (!string.IsNullOrWhiteSpace(emailOrPhone))
@@ -216,17 +241,20 @@ namespace Supabase.Unity
             var changeEvent = type == AuthOtpType.Recovery
                 ? AuthChangeEvent.PasswordRecovery
                 : AuthChangeEvent.SignedIn;
-            return await RequestAndAdoptSessionAsync("verify", null, body, changeEvent, cancellationToken);
+            return await RequestAndAdoptSessionAsync("verify", null, body, changeEvent,
+                sessionOperation, cancellationToken);
         }
 
         public async Task<SupabaseResult<AuthSession>> SignInWithIdTokenAsync(
             AuthIdTokenOptions idTokenOptions,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             if (idTokenOptions == null)
                 throw new ArgumentNullException("idTokenOptions");
             Require(idTokenOptions.Provider, "idTokenOptions.Provider");
             Require(idTokenOptions.IdToken, "idTokenOptions.IdToken");
+            var sessionOperation = BeginSessionOperation(cancellationToken);
             var body = new JObject
             {
                 ["provider"] = idTokenOptions.Provider,
@@ -236,7 +264,7 @@ namespace Supabase.Unity
             Add(body, "nonce", idTokenOptions.Nonce);
             Add(body, "captcha_token", idTokenOptions.CaptchaToken);
             return await RequestAndAdoptSessionAsync("token", new[] { Pair("grant_type", "id_token") },
-                body, AuthChangeEvent.SignedIn, cancellationToken);
+                body, AuthChangeEvent.SignedIn, sessionOperation, cancellationToken);
         }
 
         public async Task<SupabaseResult<Uri>> SignInWithOAuthAsync(
@@ -268,7 +296,8 @@ namespace Supabase.Unity
                 if (callbackProvider == null)
                     return SupabaseResult<Uri>.Failure(SupabaseError.Create(SupabaseService.Auth,
                         SupabaseErrorKind.Configuration,
-                        "OAuth browser launch requires an IAuthCallbackProvider."));
+                        "OAuth browser launch requires an IAuthCallbackProvider.",
+                        "auth_callback_provider_missing"));
                 callbackProvider.Open(uri);
             }
             return SupabaseResult<Uri>.Success(uri);
@@ -278,7 +307,9 @@ namespace Supabase.Unity
             string code,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(code, "code");
+            var sessionOperation = BeginSessionOperation(cancellationToken);
             var verifier = await ReadPkceVerifierAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(verifier))
                 return SupabaseResult<AuthSession>.Failure(SupabaseError.Create(SupabaseService.Auth,
@@ -286,7 +317,8 @@ namespace Supabase.Unity
                     "No valid PKCE verifier was found for this OAuth callback. The verifier is " +
                     "created when sign-in starts and expires after 10 minutes. This usually means " +
                     "the sign-in was never started on this device, it has already been completed, " +
-                    "or too much time passed before the callback arrived."));
+                    "or too much time passed before the callback arrived.",
+                    "pkce_verifier_missing"));
 
             var body = new JObject
             {
@@ -294,8 +326,9 @@ namespace Supabase.Unity
                 ["code_verifier"] = verifier
             };
             var result = await RequestAndAdoptSessionAsync("token", new[] { Pair("grant_type", "pkce") },
-                body, AuthChangeEvent.SignedIn, cancellationToken);
-            if (result.IsSuccess)
+                body, AuthChangeEvent.SignedIn, sessionOperation, cancellationToken);
+            if (result.IsSuccess || (result.Error != null &&
+                result.Error.Code == "auth_operation_superseded"))
                 await pkceStore.RemoveAsync(pkceKey, cancellationToken);
             return result;
         }
@@ -309,10 +342,14 @@ namespace Supabase.Unity
             var parameters = ParseParameters(callback);
             string error;
             if (parameters.TryGetValue("error_description", out error) || parameters.TryGetValue("error", out error))
+            {
+                string errorCode;
+                if (!parameters.TryGetValue("error_code", out errorCode) ||
+                    string.IsNullOrWhiteSpace(errorCode))
+                    parameters.TryGetValue("error", out errorCode);
                 return SupabaseResult<AuthSession>.Failure(SupabaseError.Create(SupabaseService.Auth,
-                    SupabaseErrorKind.Protocol, error, parameters.ContainsKey("error_code")
-                        ? parameters["error_code"]
-                        : null));
+                    SupabaseErrorKind.Protocol, error, errorCode));
+            }
 
             string code;
             if (parameters.TryGetValue("code", out code) && !string.IsNullOrWhiteSpace(code))
@@ -353,15 +390,22 @@ namespace Supabase.Unity
             CancellationToken cancellationToken = default(CancellationToken))
         {
             ThrowIfDisposed();
+            cancellationToken.ThrowIfCancellationRequested();
+            Task<SupabaseResult<AuthSession>> sharedRefresh;
             lock (refreshGate)
             {
                 if (refreshTask != null)
-                    return refreshTask;
-                var started = RefreshSessionCoreAsync(cancellationToken);
-                refreshTask = started;
-                ClearRefreshTaskWhenComplete(started);
-                return started;
+                    sharedRefresh = refreshTask;
+                else
+                {
+                    sharedRefresh = RefreshSessionCoreAsync(lifetimeCancellation.Token);
+                    refreshTask = sharedRefresh;
+                    ClearRefreshTaskWhenComplete(sharedRefresh);
+                }
             }
+            return cancellationToken.CanBeCanceled
+                ? AwaitWithCancellationAsync(sharedRefresh, cancellationToken)
+                : sharedRefresh;
         }
 
         public async Task<SupabaseResult<AuthSession>> SetSessionAsync(
@@ -369,40 +413,46 @@ namespace Supabase.Unity
             string refreshToken,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(accessToken, "accessToken");
             Require(refreshToken, "refreshToken");
-            var oldSession = CurrentSession;
-            CurrentSession = new AuthSession
+            var sessionOperation = BeginSessionOperation(cancellationToken);
+            var session = new AuthSession
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 TokenType = "bearer",
                 ExpiresAt = ReadJwtLong(accessToken, "exp")
             };
-            var user = await GetUserAsync(cancellationToken);
+            var user = await RequestAsync<AuthUser>(SupabaseHttpMethod.Get, "user", null, null,
+                accessToken, cancellationToken);
             if (!user.IsSuccess)
-            {
-                CurrentSession = oldSession;
                 return SupabaseResult<AuthSession>.Failure(user.Error, user.Metadata);
-            }
-            CurrentSession.User = user.Data;
-            await PersistSessionAsync(cancellationToken);
-            Notify(AuthChangeEvent.SignedIn);
-            return SupabaseResult<AuthSession>.Success(CurrentSession, user.Metadata);
+            session.User = user.Data;
+            if (!TryReplaceCurrentSessionForOperation(sessionOperation, session))
+                return SupabaseResult<AuthSession>.Failure(SessionOperationSuperseded(), user.Metadata);
+            await PersistSessionAsync(CancellationToken.None);
+            if (!TryQueueStateChanged(AuthChangeEvent.SignedIn, session))
+                return SupabaseResult<AuthSession>.Failure(SessionOperationSuperseded(), user.Metadata);
+            return SupabaseResult<AuthSession>.Success(session, user.Metadata);
         }
 
         public async Task<SupabaseResult<AuthUser>> GetUserAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (CurrentSession == null || string.IsNullOrWhiteSpace(CurrentSession.AccessToken))
+            AuthSession requestSession;
+            if (!TryCaptureAuthenticatedSession(out requestSession))
                 return SupabaseResult<AuthUser>.Failure(NotAuthenticated());
+            var userOperation = BeginUserOperation(cancellationToken);
             var result = await RequestAsync<AuthUser>(SupabaseHttpMethod.Get, "user", null, null,
-                cancellationToken);
-            if (result.IsSuccess && CurrentSession != null)
-            {
-                CurrentSession.User = result.Data;
-                await PersistSessionAsync(cancellationToken);
-            }
+                requestSession.AccessToken, cancellationToken);
+            if (!result.IsSuccess)
+                return result;
+            if (!IsValidAuthUser(result.Data))
+                return SupabaseResult<AuthUser>.Failure(InvalidAuthUser(), result.Metadata);
+            if (!TryApplyUserToCompatibleSession(requestSession, result.Data, userOperation))
+                return SupabaseResult<AuthUser>.Failure(SessionOperationSuperseded(), result.Metadata);
+            await PersistSessionAsync(CancellationToken.None);
             return result;
         }
 
@@ -412,16 +462,21 @@ namespace Supabase.Unity
         {
             if (attributes == null)
                 throw new ArgumentNullException("attributes");
-            if (CurrentSession == null)
+            AuthSession requestSession;
+            if (!TryCaptureAuthenticatedSession(out requestSession))
                 return SupabaseResult<AuthUser>.Failure(NotAuthenticated());
+            var userOperation = BeginUserOperation(cancellationToken);
             var result = await RequestAsync<AuthUser>(SupabaseHttpMethod.Put, "user", attributes, null,
-                cancellationToken);
-            if (result.IsSuccess)
-            {
-                CurrentSession.User = result.Data;
-                await PersistSessionAsync(cancellationToken);
-                Notify(AuthChangeEvent.UserUpdated);
-            }
+                requestSession.AccessToken, cancellationToken);
+            if (!result.IsSuccess)
+                return result;
+            if (!IsValidAuthUser(result.Data))
+                return SupabaseResult<AuthUser>.Failure(InvalidAuthUser(), result.Metadata);
+            if (!TryApplyUserToCompatibleSession(requestSession, result.Data, userOperation))
+                return SupabaseResult<AuthUser>.Failure(SessionOperationSuperseded(), result.Metadata);
+            await PersistSessionAsync(CancellationToken.None);
+            if (!TryNotifyCurrentUser(AuthChangeEvent.UserUpdated, result.Data))
+                return SupabaseResult<AuthUser>.Failure(SessionOperationSuperseded(), result.Metadata);
             return result;
         }
 
@@ -455,9 +510,16 @@ namespace Supabase.Unity
             AuthSignOutScope scope = AuthSignOutScope.Global,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
+            var changesCurrentSession = scope != AuthSignOutScope.Others;
+            var sessionOperation = changesCurrentSession
+                ? BeginSessionOperation(cancellationToken)
+                : 0;
             if (CurrentSession == null)
             {
-                await SafeRemoveSessionAsync(cancellationToken);
+                if (changesCurrentSession)
+                    TryReplaceCurrentSessionForOperation(sessionOperation, null);
+                await PersistSessionAsync(CancellationToken.None);
                 return SupabaseResult.Success();
             }
             var scopeValue = scope.ToString().ToLowerInvariant();
@@ -466,9 +528,13 @@ namespace Supabase.Unity
             if (result.IsSuccess || (result.Error != null &&
                 (result.Error.StatusCode == 401 || result.Error.StatusCode == 403 || result.Error.StatusCode == 404)))
             {
-                CurrentSession = null;
-                await SafeRemoveSessionAsync(cancellationToken);
-                Notify(AuthChangeEvent.SignedOut);
+                if (changesCurrentSession)
+                {
+                    if (!TryReplaceCurrentSessionForOperation(sessionOperation, null))
+                        return SupabaseResult.Failure(SessionOperationSuperseded(), result.Metadata);
+                    await PersistSessionAsync(CancellationToken.None);
+                    TryQueueStateChanged(AuthChangeEvent.SignedOut, null);
+                }
                 return SupabaseResult.Success(result.Metadata);
             }
             return result;
@@ -499,13 +565,15 @@ namespace Supabase.Unity
             Uri uri;
             if (result.Data == null || !Uri.TryCreate(result.Data.Url, UriKind.Absolute, out uri))
                 return SupabaseResult<Uri>.Failure(SupabaseError.Create(SupabaseService.Auth,
-                    SupabaseErrorKind.Protocol, "Supabase did not return a valid identity authorization URL."));
+                    SupabaseErrorKind.Protocol, "Supabase did not return a valid identity authorization URL.",
+                    "auth_identity_url_missing"));
             if (oauthOptions.OpenBrowser)
             {
                 if (callbackProvider == null)
                     return SupabaseResult<Uri>.Failure(SupabaseError.Create(SupabaseService.Auth,
                         SupabaseErrorKind.Configuration,
-                        "Identity linking requires an IAuthCallbackProvider to open the browser."));
+                        "Identity linking requires an IAuthCallbackProvider to open the browser.",
+                        "auth_callback_provider_missing"));
                 callbackProvider.Open(uri);
             }
             return SupabaseResult<Uri>.Success(uri, result.Metadata);
@@ -516,16 +584,22 @@ namespace Supabase.Unity
             CancellationToken cancellationToken = default(CancellationToken))
         {
             Require(identityId, "identityId");
-            if (CurrentSession == null)
+            AuthSession requestSession;
+            if (!TryCaptureAuthenticatedSession(out requestSession))
                 return SupabaseResult<AuthUser>.Failure(NotAuthenticated());
+            var userOperation = BeginUserOperation(cancellationToken);
             var result = await RequestAsync<AuthUser>(SupabaseHttpMethod.Delete,
-                "user/identities/" + Uri.EscapeDataString(identityId), null, null, cancellationToken);
-            if (result.IsSuccess)
-            {
-                CurrentSession.User = result.Data;
-                await PersistSessionAsync(cancellationToken);
-                Notify(AuthChangeEvent.UserUpdated);
-            }
+                "user/identities/" + Uri.EscapeDataString(identityId), null, null,
+                requestSession.AccessToken, cancellationToken);
+            if (!result.IsSuccess)
+                return result;
+            if (!IsValidAuthUser(result.Data))
+                return SupabaseResult<AuthUser>.Failure(InvalidAuthUser(), result.Metadata);
+            if (!TryApplyUserToCompatibleSession(requestSession, result.Data, userOperation))
+                return SupabaseResult<AuthUser>.Failure(SessionOperationSuperseded(), result.Metadata);
+            await PersistSessionAsync(CancellationToken.None);
+            if (!TryNotifyCurrentUser(AuthChangeEvent.UserUpdated, result.Data))
+                return SupabaseResult<AuthUser>.Failure(SessionOperationSuperseded(), result.Metadata);
             return result;
         }
 
@@ -572,6 +646,7 @@ namespace Supabase.Unity
             Require(factorId, "factorId");
             Require(challengeId, "challengeId");
             Require(code, "code");
+            var sessionOperation = BeginSessionOperation(cancellationToken);
             var body = new JObject
             {
                 ["challenge_id"] = challengeId,
@@ -579,7 +654,7 @@ namespace Supabase.Unity
             };
             return await RequestAndAdoptSessionAsync(
                 "factors/" + Uri.EscapeDataString(factorId) + "/verify", null, body,
-                AuthChangeEvent.MfaChallengeVerified, cancellationToken);
+                AuthChangeEvent.MfaChallengeVerified, sessionOperation, cancellationToken);
         }
 
         public async Task<SupabaseResult<AuthSession>> ChallengeAndVerifyMfaAsync(
@@ -651,26 +726,49 @@ namespace Supabase.Unity
             {
                 return SupabaseResult<AuthAssuranceLevel>.Failure(SupabaseError.Create(SupabaseService.Auth,
                     SupabaseErrorKind.Serialization, "The session JWT could not be decoded.",
+                    "auth_session_invalid",
                     details: exception.Message));
             }
         }
 
         private async Task<SupabaseResult<AuthSession>> RefreshSessionCoreAsync(CancellationToken cancellationToken)
         {
-            if (CurrentSession == null || string.IsNullOrWhiteSpace(CurrentSession.RefreshToken))
+            AuthSession refreshingSession;
+            long refreshingRevision;
+            CaptureCurrentSession(out refreshingSession, out refreshingRevision);
+            if (refreshingSession == null || string.IsNullOrWhiteSpace(refreshingSession.RefreshToken))
                 return SupabaseResult<AuthSession>.Failure(NotAuthenticated());
-            var body = new JObject { ["refresh_token"] = CurrentSession.RefreshToken };
-            var result = await RequestAndAdoptSessionAsync("token",
-                new[] { Pair("grant_type", "refresh_token") }, body, AuthChangeEvent.TokenRefreshed,
-                cancellationToken);
-            if (!result.IsSuccess && result.Error != null &&
-                (result.Error.StatusCode == 400 || result.Error.StatusCode == 401))
+            var userAtRefreshStart = refreshingSession.User;
+            var body = new JObject { ["refresh_token"] = refreshingSession.RefreshToken };
+            var response = await RequestAsync<AuthResponse>(SupabaseHttpMethod.Post, "token", body,
+                new[] { Pair("grant_type", "refresh_token") }, cancellationToken);
+            if (!response.IsSuccess)
             {
-                CurrentSession = null;
-                await SafeRemoveSessionAsync(CancellationToken.None);
-                Notify(AuthChangeEvent.SignedOut);
+                if (response.Error != null &&
+                    (response.Error.StatusCode == 400 || response.Error.StatusCode == 401) &&
+                    TryReplaceCurrentSession(refreshingRevision, null))
+                {
+                    await PersistSessionAsync(CancellationToken.None);
+                    TryQueueStateChanged(AuthChangeEvent.SignedOut, null);
+                }
+                return SupabaseResult<AuthSession>.Failure(response.Error, response.Metadata);
             }
-            return result;
+
+            var session = response.Data == null ? null : response.Data.GetSession();
+            if (session == null)
+                return SupabaseResult<AuthSession>.Failure(SupabaseError.Create(SupabaseService.Auth,
+                    SupabaseErrorKind.Protocol, "Supabase Auth did not return a session.",
+                    "auth_session_missing"), response.Metadata);
+            session.NormalizeExpiry();
+            if (!ReferenceEquals(refreshingSession.User, userAtRefreshStart) &&
+                IsSameUser(refreshingSession.User, session.User))
+                session.User = refreshingSession.User;
+            if (!TryReplaceCurrentSession(refreshingRevision, session))
+                return SupabaseResult<AuthSession>.Failure(SessionOperationSuperseded(), response.Metadata);
+            await PersistSessionAsync(CancellationToken.None);
+            if (!TryQueueStateChanged(AuthChangeEvent.TokenRefreshed, session))
+                return SupabaseResult<AuthSession>.Failure(SessionOperationSuperseded(), response.Metadata);
+            return SupabaseResult<AuthSession>.Success(session, response.Metadata);
         }
 
         private async void ClearRefreshTaskWhenComplete(Task<SupabaseResult<AuthSession>> task)
@@ -689,6 +787,7 @@ namespace Supabase.Unity
             IEnumerable<KeyValuePair<string, string>> query,
             JObject body,
             AuthChangeEvent changeEvent,
+            long sessionOperation,
             CancellationToken cancellationToken)
         {
             var response = await RequestAsync<AuthResponse>(SupabaseHttpMethod.Post, path, body, query,
@@ -698,9 +797,23 @@ namespace Supabase.Unity
             var session = response.Data == null ? null : response.Data.GetSession();
             if (session == null)
                 return SupabaseResult<AuthSession>.Failure(SupabaseError.Create(SupabaseService.Auth,
-                    SupabaseErrorKind.Protocol, "Supabase Auth did not return a session."), response.Metadata);
-            await AdoptSessionAsync(session, changeEvent, cancellationToken);
+                    SupabaseErrorKind.Protocol, "Supabase Auth did not return a session.",
+                    "auth_session_missing"), response.Metadata);
+            if (!await AdoptSessionAsync(session, changeEvent, sessionOperation, cancellationToken))
+                return SupabaseResult<AuthSession>.Failure(SessionOperationSuperseded(), response.Metadata);
             return SupabaseResult<AuthSession>.Success(session, response.Metadata);
+        }
+
+        private Task<SupabaseResult<T>> RequestAsync<T>(
+            SupabaseHttpMethod method,
+            string path,
+            object body,
+            IEnumerable<KeyValuePair<string, string>> query,
+            CancellationToken cancellationToken)
+        {
+            var session = CurrentSession;
+            return RequestAsync<T>(method, path, body, query,
+                session == null ? null : session.AccessToken, cancellationToken);
         }
 
         private async Task<SupabaseResult<T>> RequestAsync<T>(
@@ -708,11 +821,12 @@ namespace Supabase.Unity
             string path,
             object body,
             IEnumerable<KeyValuePair<string, string>> query,
+            string accessToken,
             CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
             var request = SupabaseHttp.CreateJsonRequest(options, SupabaseHttp.Combine(endpoint, path, query),
-                method, body, CurrentSession == null ? null : CurrentSession.AccessToken);
+                method, body, accessToken);
             var response = await SupabaseHttp.SendAsync(transport, request, cancellationToken);
             var metadata = SupabaseHttp.Metadata(response);
             if (!response.IsSuccessStatusCode)
@@ -727,6 +841,7 @@ namespace Supabase.Unity
             {
                 return SupabaseResult<T>.Failure(SupabaseError.Create(SupabaseService.Auth,
                     SupabaseErrorKind.Serialization, "Supabase Auth returned an invalid response.",
+                    "auth_response_invalid",
                     details: exception.Message, rawResponse: SupabaseHttp.Redact(response.Text)), metadata);
             }
         }
@@ -747,27 +862,216 @@ namespace Supabase.Unity
                 : SupabaseResult.Failure(SupabaseHttp.Error(SupabaseService.Auth, response), metadata);
         }
 
-        private async Task AdoptSessionAsync(
+        private async Task<bool> AdoptSessionAsync(
             AuthSession session,
             AuthChangeEvent changeEvent,
+            long sessionOperation,
             CancellationToken cancellationToken)
         {
             session.NormalizeExpiry();
-            CurrentSession = session;
-            await PersistSessionAsync(cancellationToken);
-            Notify(changeEvent);
+            if (!TryReplaceCurrentSessionForOperation(sessionOperation, session))
+                return false;
+            await PersistSessionAsync(CancellationToken.None);
+            return TryQueueStateChanged(changeEvent, session);
+        }
+
+        private void CaptureCurrentSession(out AuthSession session, out long revision)
+        {
+            lock (sessionGate)
+            {
+                session = CurrentSession;
+                revision = sessionRevision;
+            }
+        }
+
+        private bool TryCaptureAuthenticatedSession(out AuthSession session)
+        {
+            long ignoredRevision;
+            CaptureCurrentSession(out session, out ignoredRevision);
+            return session != null && !string.IsNullOrWhiteSpace(session.AccessToken);
+        }
+
+        private long BeginUserOperation(CancellationToken cancellationToken)
+        {
+            ThrowIfDisposed();
+            cancellationToken.ThrowIfCancellationRequested();
+            lock (sessionGate)
+                return ++userOperationRevision;
+        }
+
+        private bool TryApplyUserToCompatibleSession(
+            AuthSession requestSession,
+            AuthUser user,
+            long expectedUserOperation)
+        {
+            lock (sessionGate)
+            {
+                if (userOperationRevision != expectedUserOperation ||
+                    CurrentSession == null || !IsValidAuthUser(user))
+                    return false;
+                var requestUserId = SessionUserId(requestSession);
+                if (!string.IsNullOrWhiteSpace(requestUserId) &&
+                    !string.Equals(requestUserId, user.Id, StringComparison.Ordinal))
+                    return false;
+                if (!ReferenceEquals(CurrentSession, requestSession))
+                {
+                    var currentUserId = SessionUserId(CurrentSession);
+                    if (string.IsNullOrWhiteSpace(requestUserId) ||
+                        !string.Equals(requestUserId, currentUserId, StringComparison.Ordinal))
+                        return false;
+                }
+                CurrentSession.User = user;
+                return true;
+            }
+        }
+
+        private bool TryNotifyCurrentUser(AuthChangeEvent changeEvent, AuthUser user)
+        {
+            var schedule = false;
+            lock (sessionGate)
+            {
+                if (CurrentSession == null || !ReferenceEquals(CurrentSession.User, user))
+                    return false;
+                schedule = EnqueueStateChangedLocked(changeEvent, CurrentSession);
+            }
+            if (schedule)
+                SupabaseRuntimeHost.Post(DrainStateNotifications);
+            return true;
+        }
+
+        private bool TryQueueStateChanged(AuthChangeEvent changeEvent, AuthSession expectedSession)
+        {
+            var schedule = false;
+            lock (sessionGate)
+            {
+                if (!ReferenceEquals(CurrentSession, expectedSession))
+                    return false;
+                schedule = EnqueueStateChangedLocked(changeEvent, expectedSession);
+            }
+            if (schedule)
+                SupabaseRuntimeHost.Post(DrainStateNotifications);
+            return true;
+        }
+
+        private void QueueStateChanged(AuthChangeEvent changeEvent)
+        {
+            var schedule = false;
+            lock (sessionGate)
+                schedule = EnqueueStateChangedLocked(changeEvent, CurrentSession);
+            if (schedule)
+                SupabaseRuntimeHost.Post(DrainStateNotifications);
+        }
+
+        private bool EnqueueStateChangedLocked(AuthChangeEvent changeEvent, AuthSession session)
+        {
+            var handler = StateChanged;
+            if (handler == null)
+                return false;
+            var args = new AuthStateChangedEventArgs(changeEvent, session);
+            stateNotifications.Enqueue(delegate { handler(this, args); });
+            if (stateNotificationScheduled)
+                return false;
+            stateNotificationScheduled = true;
+            return true;
+        }
+
+        private void DrainStateNotifications()
+        {
+            while (true)
+            {
+                Action notification;
+                lock (sessionGate)
+                {
+                    if (stateNotifications.Count == 0)
+                    {
+                        stateNotificationScheduled = false;
+                        return;
+                    }
+                    notification = stateNotifications.Dequeue();
+                }
+                try { notification(); }
+                catch (Exception exception)
+                {
+                    options.Logger.Log(SupabaseLogLevel.Error,
+                        "A Supabase Auth state-change handler failed.", exception);
+                }
+            }
+        }
+
+        private long BeginSessionOperation(CancellationToken cancellationToken)
+        {
+            ThrowIfDisposed();
+            cancellationToken.ThrowIfCancellationRequested();
+            lock (sessionGate)
+                return ++sessionOperationRevision;
+        }
+
+        private bool TryReplaceCurrentSessionForOperation(
+            long expectedOperation,
+            AuthSession session)
+        {
+            lock (sessionGate)
+            {
+                if (sessionOperationRevision != expectedOperation)
+                    return false;
+                CurrentSession = session;
+                sessionRevision++;
+                return true;
+            }
+        }
+
+        private static async Task<T> AwaitWithCancellationAsync<T>(
+            Task<T> task,
+            CancellationToken cancellationToken)
+        {
+            var cancellation = new TaskCompletionSource<bool>();
+            using (cancellationToken.Register(delegate { cancellation.TrySetResult(true); }))
+            {
+                if (task != await Task.WhenAny(task, cancellation.Task))
+                    throw new OperationCanceledException(cancellationToken);
+            }
+            return await task;
+        }
+
+        private async Task<string> ReadPersistedSessionAsync(CancellationToken cancellationToken)
+        {
+            await sessionStoreGate.WaitAsync(cancellationToken);
+            try
+            {
+                return await sessionStore.GetAsync(sessionKey, cancellationToken);
+            }
+            finally { sessionStoreGate.Release(); }
+        }
+
+        private bool TryReplaceCurrentSession(long expectedRevision, AuthSession session)
+        {
+            lock (sessionGate)
+            {
+                if (sessionRevision != expectedRevision)
+                    return false;
+                CurrentSession = session;
+                sessionRevision++;
+                return true;
+            }
         }
 
         private async Task PersistSessionAsync(CancellationToken cancellationToken)
         {
-            if (CurrentSession == null)
-            {
-                await SafeRemoveSessionAsync(cancellationToken);
-                return;
-            }
+            await sessionStoreGate.WaitAsync(cancellationToken);
+            var hasSession = false;
             try
             {
-                await sessionStore.SetAsync(sessionKey, SupabaseJson.Serialize(CurrentSession), cancellationToken);
+                string serialized = null;
+                lock (sessionGate)
+                {
+                    hasSession = CurrentSession != null;
+                    if (hasSession)
+                        serialized = SupabaseJson.Serialize(CurrentSession);
+                }
+                if (hasSession)
+                    await sessionStore.SetAsync(sessionKey, serialized, cancellationToken);
+                else
+                    await sessionStore.RemoveAsync(sessionKey, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -775,20 +1079,11 @@ namespace Supabase.Unity
             }
             catch (Exception exception)
             {
-                options.Logger.Log(SupabaseLogLevel.Warning,
-                    "The Supabase session is active but could not be persisted.", exception);
+                options.Logger.Log(SupabaseLogLevel.Warning, hasSession
+                    ? "The Supabase session is active but could not be persisted."
+                    : "The persisted Supabase session could not be removed.", exception);
             }
-        }
-
-        private async Task SafeRemoveSessionAsync(CancellationToken cancellationToken)
-        {
-            try { await sessionStore.RemoveAsync(sessionKey, cancellationToken); }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception exception)
-            {
-                options.Logger.Log(SupabaseLogLevel.Warning, "The persisted Supabase session could not be removed.",
-                    exception);
-            }
+            finally { sessionStoreGate.Release(); }
         }
 
         private void StartAutoRefresh()
@@ -914,19 +1209,44 @@ namespace Supabase.Unity
             return (string)envelope["v"];
         }
 
-        private void Notify(AuthChangeEvent changeEvent)
-        {
-            var handler = StateChanged;
-            if (handler == null)
-                return;
-            var args = new AuthStateChangedEventArgs(changeEvent, CurrentSession);
-            SupabaseRuntimeHost.Post(delegate { handler(this, args); });
-        }
-
         private static SupabaseError NotAuthenticated()
         {
             return SupabaseError.Create(SupabaseService.Auth, SupabaseErrorKind.Protocol,
                 "No authenticated Supabase session is available.", "not_authenticated", 401);
+        }
+
+        private static SupabaseError SessionOperationSuperseded()
+        {
+            return SupabaseError.Create(SupabaseService.Auth, SupabaseErrorKind.Protocol,
+                "A newer Auth session operation superseded this result.",
+                "auth_operation_superseded");
+        }
+
+        private static SupabaseError InvalidAuthUser()
+        {
+            return SupabaseError.Create(SupabaseService.Auth, SupabaseErrorKind.Protocol,
+                "Supabase Auth did not return a valid user.", "auth_user_missing");
+        }
+
+        private static bool IsValidAuthUser(AuthUser user)
+        {
+            return user != null && !string.IsNullOrWhiteSpace(user.Id);
+        }
+
+        private static bool IsSameUser(AuthUser left, AuthUser right)
+        {
+            return IsValidAuthUser(left) && IsValidAuthUser(right) &&
+                string.Equals(left.Id, right.Id, StringComparison.Ordinal);
+        }
+
+        private static string SessionUserId(AuthSession session)
+        {
+            if (session == null)
+                return null;
+            if (session.User != null && !string.IsNullOrWhiteSpace(session.User.Id))
+                return session.User.Id;
+            try { return (string)ReadJwtPayload(session.AccessToken)["sub"]; }
+            catch { return null; }
         }
 
         private static string OtpType(AuthOtpType type)
@@ -1049,6 +1369,7 @@ namespace Supabase.Unity
             if (disposed)
                 return;
             disposed = true;
+            lifetimeCancellation.Cancel();
             if (refreshLoopCancellation != null)
             {
                 refreshLoopCancellation.Cancel();
@@ -1058,6 +1379,7 @@ namespace Supabase.Unity
             SupabaseRuntimeHost.FocusChanged -= OnFocusChanged;
             if (callbackProvider != null)
                 callbackProvider.CallbackReceived -= OnCallbackReceived;
+            lifetimeCancellation.Dispose();
         }
     }
 }

@@ -57,6 +57,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; verified archives do not need republishing."
+            exit 0
+          fi
+
           prerelease=()
           if [[ "$RELEASE_TAG" == *-* ]]; then
             prerelease+=(--prerelease)

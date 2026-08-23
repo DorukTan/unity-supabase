@@ -94,6 +94,10 @@ Contract notes:
 - `GetAsync` returns `null` for a missing key. It must not throw.
 - `RemoveAsync` on a key that was never written must succeed quietly.
 - Keys are opaque strings derived from your project URL. Do not parse them.
+- `AuthClient` serializes its `GetAsync`, `SetAsync`, and `RemoveAsync` calls for the session key.
+  A startup value is ignored if the local Auth session changes while `GetAsync` is pending.
+- After Auth accepts a session change in memory, the corresponding `SetAsync` or `RemoveAsync`
+  finishes as a commit step even if the original caller cancels.
 - Calls may arrive from a background thread. If your implementation touches Unity APIs,
   marshal to the main thread yourself.
 

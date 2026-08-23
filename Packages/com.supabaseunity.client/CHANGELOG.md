@@ -1,5 +1,31 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.2.0-beta.6] - 2026-08-23
+
+### Fixed
+
+- `AuthSignOutScope.Others` now revokes other sessions without clearing the current local session.
+- A token refresh that finishes after a newer sign-in or sign-out can no longer overwrite the
+  newer Auth state.
+- Canceling one `RefreshSessionAsync` caller no longer cancels the shared token refresh for every
+  concurrent caller.
+- Slower sign-in and sign-out responses can no longer overwrite a session operation that started
+  later. Superseded session results fail with `auth_operation_superseded`.
+- Profile fetch, profile update, and identity-unlink responses no longer modify `CurrentUser`
+  after sign-out, an account switch, or a newer user operation. Token refreshes for the same user
+  remain compatible.
+- Session-store operations are now ordered so a slower write, removal, or startup read cannot
+  leave durable Auth state older than `CurrentSession`.
+- Once Auth adopts a session change, its session-store commit now finishes even if the caller
+  cancels, preventing a restart from restoring the state that preceded a completed sign-in or
+  sign-out.
+- Client-generated Auth failures now use stable error codes, and OAuth callback failures preserve
+  the standard OAuth `error` code when an `error_description` is also present.
+- Auth state-change notifications now follow accepted session order and no longer emit a stale
+  `SignedOut` or `TokenRefreshed` event after a newer session operation takes ownership.
+
 ## [0.2.0-beta.5] - 2026-08-21
 
 ### Fixed
