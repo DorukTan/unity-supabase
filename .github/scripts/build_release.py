@@ -27,6 +27,7 @@ TEXT_SUFFIXES = {
     ".json",
     ".md",
     ".meta",
+    ".sql",
     ".xml",
 }
 
@@ -116,6 +117,48 @@ def generated_folder_meta(guid: str) -> bytes:
     ).encode("utf-8")
 
 
+def generated_file_meta(guid: str, suffix: str) -> bytes:
+    if suffix.lower() == ".cs":
+        importer = (
+            "MonoImporter:\n"
+            "  externalObjects: {}\n"
+            "  serializedVersion: 2\n"
+            "  defaultReferences: []\n"
+            "  executionOrder: 0\n"
+            "  icon: {instanceID: 0}\n"
+        )
+    elif suffix.lower() == ".md":
+        importer = "TextScriptImporter:\n  externalObjects: {}\n"
+    else:
+        importer = "DefaultImporter:\n  externalObjects: {}\n"
+    return (
+        "fileFormatVersion: 2\n"
+        f"guid: {guid}\n"
+        f"{importer}"
+        "  userData: \n"
+        "  assetBundleName: \n"
+        "  assetBundleVariant: \n"
+    ).encode("utf-8")
+
+
+def generated_guid(pathname: str) -> str:
+    return hashlib.sha256(
+        f"{PACKAGE_NAME}:{pathname}:v1".encode("utf-8")
+    ).hexdigest()[:32]
+
+
+def read_unity_asset_bytes(path: Path) -> bytes:
+    data = read_source_bytes(path)
+    if path.suffix.lower() == ".md":
+        text = data.decode("utf-8-sig")
+        text = re.sub(r"(?<!/)Documentation~/", "Documentation/", text)
+        text = re.sub(r"(?<!/)Samples~/", "Samples/", text)
+        text = text.replace("../Documentation~/", "../Documentation/")
+        text = text.replace("../Samples~/", "../Samples/")
+        data = text.encode("utf-8")
+    return data
+
+
 def unity_assets() -> list[UnityAsset]:
     root_guid = hashlib.sha256(
         b"com.supabaseunity.client:Assets/SupabaseUnity:v1"
@@ -146,7 +189,34 @@ def unity_assets() -> list[UnityAsset]:
                 )
             )
 
-    for filename in ("README.md", "CHANGELOG.md", "LICENSE.md"):
+    for source_name, target_name in (
+        ("Documentation~", "Documentation"),
+        ("Samples~", "Samples"),
+    ):
+        source_root = PACKAGE / source_name
+        target_root = UNITY_TARGET_ROOT / target_name
+        candidates = [source_root]
+        candidates.extend(sorted(source_root.rglob("*"), key=lambda item: item.as_posix()))
+        for source in candidates:
+            if source.name.endswith(".meta"):
+                continue
+            if source.is_symlink():
+                raise ValueError(f"Symlinks are not supported: {source.relative_to(ROOT)}")
+            target = target_root / source.relative_to(source_root)
+            pathname = target.as_posix()
+            guid = generated_guid(pathname)
+            assets.append(
+                UnityAsset(
+                    source if source.is_file() else None,
+                    generated_file_meta(guid, source.suffix)
+                    if source.is_file()
+                    else generated_folder_meta(guid),
+                    pathname,
+                    guid,
+                )
+            )
+
+    for filename in ("README.md", "README.tr.md", "CHANGELOG.md", "LICENSE.md"):
         source = PACKAGE / filename
         meta_path = Path(f"{source}.meta")
         assets.append(
@@ -172,7 +242,7 @@ def build_unitypackage(path: Path) -> None:
         for item in assets:
             archive.addfile(tar_info(f"{item.guid}/", directory=True))
             if item.source is not None:
-                add_bytes(archive, f"{item.guid}/asset", read_source_bytes(item.source))
+                add_bytes(archive, f"{item.guid}/asset", read_unity_asset_bytes(item.source))
             add_bytes(archive, f"{item.guid}/asset.meta", item.meta)
             add_bytes(archive, f"{item.guid}/pathname", item.pathname.encode("utf-8"))
 
@@ -220,6 +290,20 @@ def validate_unitypackage(path: Path) -> None:
         forbidden = ("/Tests/", "/Samples~/", "/Documentation~/")
         if any(token in pathname for pathname in seen_paths for token in forbidden):
             raise ValueError("unitypackage includes development-only package content")
+
+        required = {
+            f"{UNITY_TARGET_ROOT.as_posix()}/Documentation/getting-started.md",
+            f"{UNITY_TARGET_ROOT.as_posix()}/Documentation/troubleshooting.md",
+            f"{UNITY_TARGET_ROOT.as_posix()}/Samples/Quickstart/README.md",
+            f"{UNITY_TARGET_ROOT.as_posix()}/Samples/Quickstart/setup.sql",
+            f"{UNITY_TARGET_ROOT.as_posix()}/Samples/Quickstart/SupabaseQuickstart.cs",
+        }
+        missing = sorted(required - seen_paths)
+        if missing:
+            raise ValueError(
+                "unitypackage is missing documentation or Quickstart assets: "
+                + ", ".join(missing)
+            )
 
 
 def write_checksums(path: Path, archives: list[Path]) -> None:

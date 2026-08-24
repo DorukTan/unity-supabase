@@ -1,8 +1,8 @@
 # Live acceptance testing
 
-The normal EditMode suite is credential-free and remains the release gate. This optional PlayMode
-test checks the complete client against a real Supabase stack: Auth, PostgREST, Realtime, Storage,
-and an Edge Function.
+The normal EditMode suite is credential-free and remains part of the release gate. This optional
+PlayMode test checks the complete client against a real Supabase stack: Auth, PostgREST, Realtime,
+Storage, and an Edge Function.
 
 ## Local stack
 

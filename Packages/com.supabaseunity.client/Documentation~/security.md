@@ -13,4 +13,6 @@ A Unity player is a public client. Anything included in a build can be extracted
 
 The Editor build validator rejects unsafe keys in `SupabaseSettings` and scans normal text assets for `sb_secret_` keys and non-anon JWTs. It cannot inspect encrypted/binary assets or credentials assembled/downloaded at runtime, so repository secret scanning and code review remain necessary.
 
-Supabase's [bucket access model](https://supabase.com/docs/guides/storage/buckets/fundamentals) and [Data API setup](https://supabase.com/docs/reference/csharp/installing) are the authoritative policy references.
+Supabase's [bucket access model](https://supabase.com/docs/guides/storage/buckets/fundamentals)
+and [Data API security guide](https://supabase.com/docs/guides/api/securing-your-api) are the
+authoritative policy references.

@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using Supabase.Unity.Editor;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Supabase.Unity.Tests
 {
@@ -74,6 +75,32 @@ namespace Supabase.Unity.Tests
             StringAssert.Contains("using UnityEngine.Scripting;", generated);
             StringAssert.Contains("[Preserve]", generated);
             StringAssert.Contains("[SupabaseTable(\"scores\")]", generated);
+        }
+
+        [Test]
+        public void SetupConnectionRequest_UsesClientSafeAuthEndpoint()
+        {
+            var options = ConfigurationTests.ValidOptions();
+
+            using (var request = SupabaseSetupWindow.CreateConnectionRequest(options))
+            {
+                Assert.AreEqual("https://example.supabase.co/auth/v1/settings", request.url);
+                Assert.AreEqual("sb_publishable_test-value", request.GetRequestHeader("apikey"));
+                Assert.AreEqual("application/json", request.GetRequestHeader("Accept"));
+                Assert.IsNull(request.GetRequestHeader("Authorization"));
+                Assert.AreEqual(0, request.redirectLimit);
+                Assert.AreEqual(15, request.timeout);
+            }
+        }
+
+        [Test]
+        public void SetupConnectionFailure_GivesActionableCredentialGuidance()
+        {
+            var message = SupabaseSetupWindow.FormatConnectionFailure(401, "Unauthorized");
+
+            StringAssert.Contains("Project URL", message);
+            StringAssert.Contains("publishable key", message);
+            StringAssert.Contains("Connect dialog", message);
         }
     }
 }

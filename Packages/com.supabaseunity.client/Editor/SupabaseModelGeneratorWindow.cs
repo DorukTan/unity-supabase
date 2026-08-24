@@ -36,7 +36,7 @@ namespace Supabase.Unity.Editor
         private bool generating;
 
         [MenuItem("Tools/Supabase/Model Generator")]
-        private static void Open()
+        internal static void Open()
         {
             GetWindow<SupabaseModelGeneratorWindow>("Supabase Models");
         }

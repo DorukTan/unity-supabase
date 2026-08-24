@@ -8,37 +8,78 @@ namespace Supabase.Unity.Samples
     {
         [SerializeField] private SupabaseSettings settings;
         private SupabaseClient client;
-        private RealtimeChannel channel;
 
         private async void Start()
         {
-            client = new SupabaseClient(settings);
-            var initialized = await client.InitializeAsync();
-            if (!initialized.IsSuccess)
+            if (settings == null)
             {
-                Debug.LogError(initialized.Error);
+                Debug.LogError(
+                    "Supabase Quickstart: assign a SupabaseSettings asset to this component.", this);
                 return;
             }
 
-            var result = await client.From<ScoreRow>().Order("score", false).Limit(20).GetAsync();
-            if (result.IsSuccess)
-                Debug.Log("Loaded " + result.Data.Count + " score rows.");
-            else
-                Debug.LogError(result.Error);
-
-            channel = client.Realtime.Channel("scores");
-            channel.OnPostgresChanges(new RealtimePostgresChangeFilter
+            try
             {
-                Schema = "public", Table = "scores", Event = RealtimePostgresEvent.All
-            }, change => Debug.Log("Score " + change.Event + " on " + change.Schema + "." + change.Table));
-            var subscribed = await channel.SubscribeAsync();
-            if (!subscribed.IsSuccess) Debug.LogError(subscribed.Error);
+                client = new SupabaseClient(settings);
+                var initialized = await client.InitializeAsync();
+                if (!initialized.IsSuccess)
+                {
+                    LogFailure("initialize", initialized.Error);
+                    return;
+                }
+
+                var result = await client.From<ScoreRow>()
+                    .Select("id,player_name,score")
+                    .Order("score", false)
+                    .Limit(20)
+                    .GetAsync();
+                if (result.IsSuccess)
+                {
+                    Debug.Log("Supabase Quickstart: loaded " + result.Data.Count + " score rows.", this);
+                    foreach (var score in result.Data)
+                        Debug.Log(score.PlayerName + ": " + score.Score, this);
+                }
+                else
+                {
+                    LogFailure("load scores", result.Error);
+                }
+
+                var channel = client.Realtime.Channel("quickstart-scores");
+                channel.OnPostgresChanges(new RealtimePostgresChangeFilter
+                {
+                    Schema = "public",
+                    Table = "scores",
+                    Event = RealtimePostgresEvent.All
+                }, change => Debug.Log(
+                    "Supabase Quickstart: " + change.Event + " on " + change.Schema + "." + change.Table,
+                    this));
+                var subscribed = await channel.SubscribeAsync();
+                if (!subscribed.IsSuccess)
+                    LogFailure("subscribe to score changes", subscribed.Error);
+                else
+                    Debug.Log("Supabase Quickstart: listening for changes to public.scores.", this);
+            }
+            catch (SupabaseConfigurationException exception)
+            {
+                Debug.LogError("Supabase Quickstart configuration: " + exception.Message, this);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception, this);
+            }
         }
 
-        private async void OnDestroy()
+        private void OnDestroy()
         {
-            if (channel != null) await channel.UnsubscribeAsync();
-            if (client != null) client.Dispose();
+            if (client != null)
+                client.Dispose();
+        }
+
+        private void LogFailure(string action, SupabaseError error)
+        {
+            Debug.LogError(
+                "Supabase Quickstart could not " + action + ": " +
+                (error == null ? "unknown error" : error.ToString()), this);
         }
     }
 

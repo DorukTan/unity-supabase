@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.7"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.7-3ecf8e" /></a>
-  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.7/com.supabaseunity.client-0.2.0-beta.7.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.8"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.8-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.8/com.supabaseunity.client-0.2.0-beta.8.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
   <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
@@ -58,7 +58,7 @@ This package keeps the platform plumbing out of your game code:
 | ⚡ **Realtime** | Postgres Changes, Broadcast, Presence, reconnects, and channel rejoin | 🧪 Beta |
 | 📦 **Storage** | Upload, download, progress, listing, move, copy, transforms, and signed URLs | 🧪 Beta |
 | 🚀 **Functions** | Typed or raw Edge Function calls with custom requests and timeouts | 🧪 Beta |
-| 🛠️ **Editor tools** | Settings, credential checks, and OpenAPI model generation | 🧪 Beta |
+| 🛠️ **Editor tools** | Guided setup, connection checks, credentials, and model generation | 🧪 Beta |
 
 > **Why is everything Beta?** The public API is not frozen yet. The goal for 1.0 is a stable
 > surface Unity projects can rely on for the long term.
@@ -71,16 +71,17 @@ This package keeps the platform plumbing out of your game code:
 
 ### 1️⃣ Install the package
 
-In Unity, open **Window > Package Manager**, choose **Add package from git URL**, and paste:
+In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
+**Window > Package Management > Package Manager**. Choose **Add package from git URL**, then paste:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.7
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.8
 ```
 
 ✅ **Done.** Newtonsoft Json.NET comes with it automatically.
 
 Prefer a file download? The
-[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.7)
+[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.8)
 also includes:
 
 - 📦 A `.unitypackage` for **Assets > Import Package > Custom Package**.
@@ -89,15 +90,20 @@ also includes:
 Install `com.unity.nuget.newtonsoft-json` first when using the `.unitypackage`. Do not install
 both distributions in the same project; they contain the same assemblies.
 
-### 2️⃣ Create your settings
+The UPM installation exposes **Quickstart** in Package Manager's **Samples** tab. The
+`.unitypackage` includes the same sample under `Assets/SupabaseUnity/Samples/Quickstart`.
 
-Choose **Create > Supabase > Settings**, then enter:
+### 2️⃣ Run the setup assistant
+
+Open **Tools > Supabase > Setup**, create a settings asset, then enter:
 
 1. 🌐 **Project URL**
 2. 🔑 **Publishable key** (`sb_publishable_...`) or legacy `anon` key
 3. 🗂️ **Data API schema** — normally `public`
 
-Assign the settings asset to the component that starts your Supabase client.
+Click **Test Project Connection**. It checks the URL, publishable key, and network path without
+testing or changing your database policies. Assign the settings asset to the component that starts
+your Supabase client.
 
 > [!CAUTION]
 > 🔐 **A Unity build is a public client.** Never include an `sb_secret_...` key, `service_role`
@@ -167,8 +173,9 @@ public sealed class ScoreRow
 > 🧊 **Keep network code asynchronous.** Calling `.Result` or `.GetAwaiter().GetResult()` can
 > freeze Unity because the transport needs the main thread to continue running.
 
-🎁 **Want a working scene?** Import the **Quickstart** sample from Package Manager, attach it
-to a GameObject, assign your settings, and press Play.
+🎁 **Want something runnable?** Import **Quickstart** from Package Manager when using UPM, or open
+the copy included with the `.unitypackage`. It contains the required SQL, a Database query, a
+Realtime subscription, and exact steps from import to Play.
 
 ---
 
@@ -255,6 +262,7 @@ of opening a public issue.
 ## 📚 Pick a guide
 
 - 🚀 [**Getting started**](Packages/com.supabaseunity.client/Documentation~/getting-started.md)
+- 🧭 [**Troubleshooting**](Packages/com.supabaseunity.client/Documentation~/troubleshooting.md)
 - 🧑‍💻 [**API guide**](Packages/com.supabaseunity.client/Documentation~/api.md)
 - 📱 [**Platform notes**](Packages/com.supabaseunity.client/Documentation~/platforms.md)
 - 💾 [**Session storage**](Packages/com.supabaseunity.client/Documentation~/session-storage.md)

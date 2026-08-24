@@ -7,10 +7,10 @@ Bu paket Unity 2021.3 LTS ile Unity 6 arasında aynı API ile Auth, Database, Re
 Package Manager’da **Add package from git URL** seçeneğine şunu gir:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.7
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.8
 ```
 
-Ardından **Assets > Create > Supabase > Settings** ile ayar dosyası oluştur. Supabase Dashboard’daki **Connect** ekranından proje URL’sini ve `sb_publishable_...` anahtarını alabilirsin. Eski `anon` JWT anahtarları da desteklenir.
+Ardından **Tools > Supabase > Setup** ekranını açıp ayar dosyasını oluştur. Supabase Dashboard’daki **Connect** ekranından proje URL’sini ve `sb_publishable_...` anahtarını al, sonra **Test Project Connection** düğmesine bas. Bu test bağlantıyı ve anahtarı kontrol eder; RLS kurallarını değiştirmez. Eski `anon` JWT anahtarları da desteklenir.
 
 ```csharp
 using Supabase.Unity;
@@ -79,4 +79,4 @@ await channel.SubscribeAsync();
 
 Önemli: Unity uygulamasına hiçbir zaman `sb_secret_...` veya `service_role` anahtarı koyma. Bunlar derlenen oyuncu tarafından çıkarılabilir. İstemci güvenliği publishable/anon anahtarını saklamaya değil, Supabase RLS ve Storage policy kurallarına dayanır. Paket bu anahtarları ayar dosyasında fark ederse build’i durdurur.
 
-Daha ayrıntılı bilgi için `Documentation~` klasörüne ve içe aktarılabilir `Quickstart` örneğine bakabilirsin.
+Package Manager’daki **Samples** bölümünden içe aktarılabilen `Quickstart` örneği artık gerekli SQL dosyasını, Database sorgusunu, Realtime aboneliğini ve kurulum adımlarını birlikte içeriyor. Bir sorun yaşarsan `Documentation~/troubleshooting.md` dosyasındaki hata rehberinden başlayabilirsin.

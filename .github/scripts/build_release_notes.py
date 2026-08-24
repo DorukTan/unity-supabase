@@ -111,10 +111,10 @@ The hosted release job rebuilt both archives and matched them against the attach
 | Checksums | Verify downloaded files | [Download `SHA256SUMS`]({release_root}/SHA256SUMS) |
 {verification_download.rstrip()}
 
-The `.unitypackage` imports to `Assets/SupabaseUnity` and includes the package README,
-changelog, and license. Install `com.unity.nuget.newtonsoft-json` 3.2.1 or newer first. Do
-not install the `.unitypackage` alongside the UPM distribution; both contain the same
-assemblies.
+The `.unitypackage` imports to `Assets/SupabaseUnity` and includes the English and Turkish
+READMEs, changelog, license, complete documentation, and runnable Quickstart. Install
+`com.unity.nuget.newtonsoft-json` 3.2.1 or newer first. Do not install the `.unitypackage`
+alongside the UPM distribution; both contain the same assemblies.
 {verification_section}
 
 ## Changelog

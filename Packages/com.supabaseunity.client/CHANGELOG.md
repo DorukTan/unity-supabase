@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+## [0.2.0-beta.8] - 2026-08-25
+
+### Added
+
+- **Tools > Supabase > Setup** now creates or locates the settings asset, explains each client
+  option, validates it locally, and tests the project URL and publishable key against Supabase
+  without using or storing an elevated key.
+- The Quickstart sample now includes repeatable SQL for its table, grants, Row Level Security
+  policy, seed rows, and Realtime publication entry, plus complete steps from import to Play mode.
+- A troubleshooting guide now maps common installation, configuration, policy, Realtime, OAuth,
+  IL2CPP, and async failures to concrete checks.
+
+### Changed
+
+- The Setup window now groups configuration, connection testing, and Quickstart import into clear
+  status-aware steps, with compact resource links and no duplicate validation menu.
+- Installation guidance now covers the Package Manager menu in both supported LTS editors and
+  Unity 6, while Setup Assistant links open documentation for the installed package version.
+- The `.unitypackage` now includes the complete documentation and runnable Quickstart under
+  `Assets/SupabaseUnity`, so both release formats ship the starter experience.
+- Settings fields now explain where values come from and what each runtime option changes.
+- The Quickstart reports missing settings and operation failures with actionable context, lists
+  the loaded rows, and disposes synchronously when its GameObject is destroyed.
+
 ## [0.2.0-beta.7] - 2026-08-23
 
 ### Changed

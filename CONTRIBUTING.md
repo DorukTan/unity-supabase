@@ -112,7 +112,8 @@ request description, including the pass count you saw.
 
 Maintainers preparing a tag must run the complete local gate documented in
 [RELEASING.md](RELEASING.md). It additionally performs a clean `.unitypackage` import, a WebGL
-build, and produces the archive hashes enforced by the tag workflow.
+build, Windows and Android builds, iOS Xcode project generation, and produces the archive hashes
+enforced by the tag workflow.
 
 ## Things to keep out of pull requests
 

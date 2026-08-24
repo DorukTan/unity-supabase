@@ -1,6 +1,8 @@
 # API guide
 
-All methods below return `Task<SupabaseResult>` or `Task<SupabaseResult<T>>` and accept an optional `CancellationToken` as the final argument.
+Network methods below return `Task<SupabaseResult>` or `Task<SupabaseResult<T>>` and accept an
+optional `CancellationToken` as the final argument. Local helpers, such as `GetPublicUrl`, return
+their value directly.
 
 ## Client
 

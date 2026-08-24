@@ -13,36 +13,75 @@ namespace Supabase.Unity.Editor
     {
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("projectUrl"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("publishableKey"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("defaultSchema"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("persistSession"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("autoRefreshToken"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("autoConnectRealtime"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("httpTimeoutSeconds"));
-            serializedObject.ApplyModifiedProperties();
-
+            SupabaseSettingsInspectorGui.DrawFields(serializedObject);
             var settings = (SupabaseSettings)target;
+            SupabaseSettingsInspectorGui.DrawValidation(settings);
+            EditorGUILayout.Space();
+            if (GUILayout.Button("Open Setup Assistant"))
+                SupabaseSetupWindow.Open(settings);
+        }
+    }
+
+    internal static class SupabaseSettingsInspectorGui
+    {
+        internal static void DrawFields(SerializedObject settingsObject)
+        {
+            settingsObject.Update();
+            EditorGUILayout.PropertyField(settingsObject.FindProperty("projectUrl"));
+            EditorGUILayout.PropertyField(settingsObject.FindProperty("publishableKey"));
+            EditorGUILayout.PropertyField(settingsObject.FindProperty("defaultSchema"));
+            EditorGUILayout.PropertyField(settingsObject.FindProperty("persistSession"));
+            EditorGUILayout.PropertyField(settingsObject.FindProperty("autoRefreshToken"));
+            EditorGUILayout.PropertyField(settingsObject.FindProperty("autoConnectRealtime"));
+            EditorGUILayout.PropertyField(settingsObject.FindProperty("httpTimeoutSeconds"));
+            settingsObject.ApplyModifiedProperties();
+        }
+
+        internal static void DrawValidation(SupabaseSettings settings)
+        {
+            SupabaseClientOptions options;
+            string error;
+            if (!TryValidate(settings, out options, out error))
+            {
+                EditorGUILayout.HelpBox(error, MessageType.Error);
+                return;
+            }
+
+            EditorGUILayout.HelpBox(
+                "The project URL and client-safe key are valid. This does not test network access or Row Level Security policies.",
+                MessageType.Info);
+            if (options.PersistSession)
+                EditorGUILayout.HelpBox(
+                    "Session persistence writes the refresh token as plain text to " +
+                    "Application.persistentDataPath. On Android and iOS that location is " +
+                    "app-private. On Windows, macOS, and Linux it is readable by any process " +
+                    "running as the same user, and the token stays usable until it is revoked. " +
+                    "Assign a custom ISessionStore backed by Keychain, Keystore, or another " +
+                    "OS-protected credential store if your game needs more than that.",
+                    MessageType.Warning);
+        }
+
+        internal static bool TryValidate(
+            SupabaseSettings settings, out SupabaseClientOptions options, out string error)
+        {
+            options = null;
+            error = null;
+            if (settings == null)
+            {
+                error = "Select or create a SupabaseSettings asset.";
+                return false;
+            }
+
             try
             {
-                var options = settings.ToOptions();
+                options = settings.ToOptions();
                 options.ValidateAndResolve();
-                EditorGUILayout.HelpBox("Client-safe Supabase configuration is valid. RLS policies are still required.",
-                    MessageType.Info);
-                if (options.PersistSession)
-                    EditorGUILayout.HelpBox(
-                        "Session persistence writes the refresh token as plain text to " +
-                        "Application.persistentDataPath. On Android and iOS that location is " +
-                        "app-private. On Windows, macOS, and Linux it is readable by any process " +
-                        "running as the same user, and the token stays usable until it is revoked. " +
-                        "Assign a custom ISessionStore backed by Keychain, Keystore, or another " +
-                        "OS-protected credential store if your game needs more than that.",
-                        MessageType.Warning);
+                return true;
             }
             catch (Exception exception)
             {
-                EditorGUILayout.HelpBox(exception.Message, MessageType.Error);
+                error = exception.Message;
+                return false;
             }
         }
     }
@@ -68,17 +107,7 @@ namespace Supabase.Unity.Editor
                 throw new BuildFailedException("Supabase configuration validation failed:\n" + issues);
         }
 
-        [MenuItem("Tools/Supabase/Validate Client Configuration")]
-        private static void ValidateMenu()
-        {
-            var issues = ValidateAllSettings();
-            if (string.IsNullOrEmpty(issues))
-                EditorUtility.DisplayDialog("Supabase", "All SupabaseSettings assets use client-safe keys.", "OK");
-            else
-                EditorUtility.DisplayDialog("Supabase validation failed", issues, "OK");
-        }
-
-        private static string ValidateAllSettings()
+        internal static string ValidateAllSettings()
         {
             var issues = string.Empty;
             foreach (var guid in AssetDatabase.FindAssets("t:SupabaseSettings"))
