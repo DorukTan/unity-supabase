@@ -3,7 +3,8 @@
 An independent Supabase client for Unity 2021.3 and newer. The package provides Auth,
 Database, Realtime, Storage and Edge Functions APIs for WebGL, desktop and mobile projects.
 
-> The package is in beta. Review the [changelog](CHANGELOG.md) before upgrading.
+> The package is a release candidate. Its public C# API is frozen for `0.2.0`; review the
+> [changelog](CHANGELOG.md) before upgrading.
 
 ## Installation
 
@@ -11,7 +12,7 @@ In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
 **Window > Package Management > Package Manager**. Select **Add package from git URL**, then enter:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.8
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-rc.1
 ```
 
 Release tarballs and `.unitypackage` files are available on the

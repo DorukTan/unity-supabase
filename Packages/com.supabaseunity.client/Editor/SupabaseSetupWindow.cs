@@ -11,9 +11,9 @@ namespace Supabase.Unity.Editor
         private const string DefaultSettingsFolder = "Assets/Supabase";
         private const string DefaultSettingsPath = DefaultSettingsFolder + "/SupabaseSettings.asset";
         private const string DocumentationUrl =
-            "https://github.com/DorukTan/unity-supabase/blob/v0.2.0-beta.8/Packages/com.supabaseunity.client/Documentation~/getting-started.md";
+            "https://github.com/DorukTan/unity-supabase/blob/v0.2.0-rc.1/Packages/com.supabaseunity.client/Documentation~/getting-started.md";
         private const string QuickstartUrl =
-            "https://github.com/DorukTan/unity-supabase/tree/v0.2.0-beta.8/Packages/com.supabaseunity.client/Samples~/Quickstart";
+            "https://github.com/DorukTan/unity-supabase/tree/v0.2.0-rc.1/Packages/com.supabaseunity.client/Samples~/Quickstart";
         private const string DashboardUrl = "https://supabase.com/dashboard/projects";
         private const string PackageName = "com.supabaseunity.client";
 

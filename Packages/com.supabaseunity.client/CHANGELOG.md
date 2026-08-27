@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.2.0-rc.1] - 2026-08-27
+
+### Added
+
+- A deterministic compatibility test now freezes the public runtime surface for `0.2.0`,
+  covering 90 public types and their constructors, methods, properties, events, fields, enum
+  values, generic constraints, optional defaults, and declared interfaces.
+
+### Changed
+
+- The package has entered release-candidate status. Changes between this release and `0.2.0`
+  will be limited to compatible fixes, documentation corrections, and release validation.
+
 ## [0.2.0-beta.8] - 2026-08-25
 
 ### Added

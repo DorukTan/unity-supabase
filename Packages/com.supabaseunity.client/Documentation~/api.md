@@ -185,3 +185,13 @@ StartCoroutine(client.From<Profile>().GetAsync().AsCoroutine(
 ```
 
 For IL2CPP builds, model members used only through reflection must be preserved. The Editor generator adds `[UnityEngine.Scripting.Preserve]` automatically; add it manually to handwritten models when using aggressive managed stripping.
+
+## API stability
+
+`0.2.0-rc.1` freezes the public C# surface for `0.2.0`. Later release candidates and the final
+`0.2.0` release may add members, but they will not remove, rename, or change existing public
+signatures. A compatibility test records the approved types, members, enum values, optional
+defaults, generic constraints, and declared interfaces.
+
+The project is still pre-1.0. A future `0.x` minor release may contain documented breaking
+changes, while patch releases remain backward compatible.

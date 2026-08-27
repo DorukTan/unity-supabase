@@ -39,6 +39,6 @@ where player_name = 'Ada';
 ```
 
 If the query or subscription fails, start with the
-[troubleshooting guide](https://github.com/DorukTan/unity-supabase/blob/v0.2.0-beta.8/Packages/com.supabaseunity.client/Documentation~/troubleshooting.md).
+[troubleshooting guide](https://github.com/DorukTan/unity-supabase/blob/v0.2.0-rc.1/Packages/com.supabaseunity.client/Documentation~/troubleshooting.md).
 Postgres Changes also requires the table to be in the `supabase_realtime` publication; `setup.sql`
 handles that when the standard publication exists.

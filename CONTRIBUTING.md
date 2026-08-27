@@ -94,6 +94,9 @@ It enforces, among other things:
 - Network operations return `SupabaseResult` or `SupabaseResult<T>`. Expected failures are
   values, not exceptions. Keep it that way.
 - New behavior needs a test. `Tests/Runtime/` uses fake transports; see `TestDoubles.cs`.
+- The public runtime API is frozen for `0.2.0`. The compatibility snapshot rejects changed
+  signatures, optional defaults, enum values, constraints, and declared interfaces. Do not
+  update that baseline to hide an accidental API change.
 
 ## What hosted checks will and will not run on your PR
 

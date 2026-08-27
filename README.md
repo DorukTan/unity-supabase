@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.8"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--beta.8-3ecf8e" /></a>
-  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-beta.8/com.supabaseunity.client-0.2.0-beta.8.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-rc.1"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--rc.1-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-rc.1/com.supabaseunity.client-0.2.0-rc.1.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
   <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
@@ -27,8 +27,8 @@
 </p>
 
 > [!IMPORTANT]
-> 🚧 **Supabase for Unity is currently in beta.** The API may change before 1.0. Breaking
-> changes are documented in the [changelog](Packages/com.supabaseunity.client/CHANGELOG.md).
+> 🚧 **Supabase for Unity is now a release candidate.** The public C# API is frozen for
+> `0.2.0`; the remaining work is final compatibility and release validation.
 
 **Independent. Open source. Community-first.** Built with Unity developers, for Unity
 developers. Not affiliated with or endorsed by Supabase, Inc. or Unity Technologies.
@@ -53,15 +53,15 @@ This package keeps the platform plumbing out of your game code:
 
 | Module | What it gives you | Status |
 | --- | --- | --- |
-| 🔑 **Auth** | Password, OTP, anonymous, OAuth/PKCE, SSO, MFA, recovery, and sessions | 🧪 Beta |
-| 🗄️ **Database** | Typed queries, filters, relationships, pagination, CRUD, counts, CSV, and RPC | 🧪 Beta |
-| ⚡ **Realtime** | Postgres Changes, Broadcast, Presence, reconnects, and channel rejoin | 🧪 Beta |
-| 📦 **Storage** | Upload, download, progress, listing, move, copy, transforms, and signed URLs | 🧪 Beta |
-| 🚀 **Functions** | Typed or raw Edge Function calls with custom requests and timeouts | 🧪 Beta |
-| 🛠️ **Editor tools** | Guided setup, connection checks, credentials, and model generation | 🧪 Beta |
+| 🔑 **Auth** | Password, OTP, anonymous, OAuth/PKCE, SSO, MFA, recovery, and sessions | 🚦 RC |
+| 🗄️ **Database** | Typed queries, filters, relationships, pagination, CRUD, counts, CSV, and RPC | 🚦 RC |
+| ⚡ **Realtime** | Postgres Changes, Broadcast, Presence, reconnects, and channel rejoin | 🚦 RC |
+| 📦 **Storage** | Upload, download, progress, listing, move, copy, transforms, and signed URLs | 🚦 RC |
+| 🚀 **Functions** | Typed or raw Edge Function calls with custom requests and timeouts | 🚦 RC |
+| 🛠️ **Editor tools** | Guided setup, connection checks, credentials, and model generation | 🚦 RC |
 
-> **Why is everything Beta?** The public API is not frozen yet. The goal for 1.0 is a stable
-> surface Unity projects can rely on for the long term.
+> **What does RC mean here?** The `0.2.0` public API is frozen and protected by a compatibility
+> test. This phase is for final fixes and real-world validation before the stable release.
 
 ---
 
@@ -75,13 +75,13 @@ In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
 **Window > Package Management > Package Manager**. Choose **Add package from git URL**, then paste:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-beta.8
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-rc.1
 ```
 
 ✅ **Done.** Newtonsoft Json.NET comes with it automatically.
 
 Prefer a file download? The
-[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-beta.8)
+[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-rc.1)
 also includes:
 
 - 📦 A `.unitypackage` for **Assets > Import Package > Custom Package**.

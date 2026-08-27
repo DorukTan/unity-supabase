@@ -1,0 +1,794 @@
+public sealed class Supabase.Unity.AuthAssuranceLevel
+  constructor Supabase.Unity.AuthAssuranceLevel()
+  property System.Collections.Generic.IReadOnlyList<Supabase.Unity.AuthAuthenticationMethod> CurrentAuthenticationMethods { get; }
+  property System.String CurrentLevel { get; }
+  property System.String NextLevel { get; }
+
+public sealed class Supabase.Unity.AuthAuthenticationMethod
+  constructor Supabase.Unity.AuthAuthenticationMethod()
+  property System.Int64 Timestamp { get; }
+  property System.String Method { get; }
+
+public enum Supabase.Unity.AuthChangeEvent : System.Int32
+  InitialSession = 0
+  MfaChallengeVerified = 6
+  PasswordRecovery = 5
+  SignedIn = 1
+  SignedOut = 2
+  TokenRefreshed = 3
+  UserUpdated = 4
+
+public sealed class Supabase.Unity.AuthClient : Supabase.Unity.IAuthClient
+  event System.EventHandler<Supabase.Unity.AuthStateChangedEventArgs> StateChanged
+  method Supabase.Unity.SupabaseResult<Supabase.Unity.AuthAssuranceLevel> GetAuthenticatorAssuranceLevel()
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthMfaChallenge>> ChallengeMfaAsync(System.String factorId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthMfaEnrollment>> EnrollMfaAsync(Supabase.Unity.AuthMfaEnrollOptions enrollOptions, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthResponse>> SignUpWithPasswordAsync(System.String email, System.String password, Supabase.Unity.AuthSignUpOptions signUpOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> ChallengeAndVerifyMfaAsync(System.String factorId, System.String code, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> ExchangeCodeForSessionAsync(System.String code, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> HandleAuthCallbackAsync(System.Uri callback, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> InitializeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> RefreshSessionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SetSessionAsync(System.String accessToken, System.String refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SignInAnonymouslyAsync(Newtonsoft.Json.Linq.JObject data = null, System.String captchaToken = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SignInWithIdTokenAsync(Supabase.Unity.AuthIdTokenOptions idTokenOptions, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SignInWithPasswordAsync(System.String emailOrPhone, System.String password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> VerifyMfaAsync(System.String factorId, System.String challengeId, System.String code, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> VerifyOtpAsync(System.String token, Supabase.Unity.AuthOtpType type, System.String emailOrPhone = null, System.String redirectTo = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSsoResponse>> SignInWithSsoAsync(Supabase.Unity.AuthSsoOptions ssoOptions, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthUser>> GetUserAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthUser>> UnlinkIdentityAsync(System.String identityId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthUser>> UpdateUserAsync(Newtonsoft.Json.Linq.JObject attributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.AuthIdentity>>> ListIdentitiesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.AuthMfaFactor>>> ListMfaFactorsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Uri>> LinkIdentityAsync(System.String provider, Supabase.Unity.AuthOAuthOptions oauthOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Uri>> SignInWithOAuthAsync(System.String provider, Supabase.Unity.AuthOAuthOptions oauthOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> ReauthenticateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> ResetPasswordForEmailAsync(System.String email, System.String redirectTo = null, System.String captchaToken = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> SignInWithOtpAsync(System.String emailOrPhone, Supabase.Unity.AuthOtpOptions otpOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> SignOutAsync(Supabase.Unity.AuthSignOutScope scope = Supabase.Unity.AuthSignOutScope.Global, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> UnenrollMfaAsync(System.String factorId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Void Dispose()
+  property Supabase.Unity.AuthSession CurrentSession { get; }
+  property Supabase.Unity.AuthUser CurrentUser { get; }
+
+public sealed class Supabase.Unity.AuthIdTokenOptions
+  constructor Supabase.Unity.AuthIdTokenOptions()
+  property System.String AccessToken { get; set; }
+  property System.String CaptchaToken { get; set; }
+  property System.String IdToken { get; set; }
+  property System.String Nonce { get; set; }
+  property System.String Provider { get; set; }
+
+public sealed class Supabase.Unity.AuthIdentity
+  constructor Supabase.Unity.AuthIdentity()
+  property Newtonsoft.Json.Linq.JObject IdentityData { get; }
+  property System.DateTimeOffset? CreatedAt { get; }
+  property System.DateTimeOffset? LastSignInAt { get; }
+  property System.DateTimeOffset? UpdatedAt { get; }
+  property System.String Id { get; }
+  property System.String IdentityId { get; }
+  property System.String Provider { get; }
+  property System.String UserId { get; }
+
+public sealed class Supabase.Unity.AuthMfaChallenge
+  constructor Supabase.Unity.AuthMfaChallenge()
+  property System.Int64 ExpiresAt { get; }
+  property System.String Id { get; }
+
+public sealed class Supabase.Unity.AuthMfaEnrollOptions
+  constructor Supabase.Unity.AuthMfaEnrollOptions()
+  property System.String FactorType { get; set; }
+  property System.String FriendlyName { get; set; }
+  property System.String Issuer { get; set; }
+  property System.String Phone { get; set; }
+
+public sealed class Supabase.Unity.AuthMfaEnrollment
+  constructor Supabase.Unity.AuthMfaEnrollment()
+  property Supabase.Unity.AuthTotpEnrollment Totp { get; }
+  property System.String Id { get; }
+  property System.String Phone { get; }
+  property System.String Type { get; }
+
+public sealed class Supabase.Unity.AuthMfaFactor
+  constructor Supabase.Unity.AuthMfaFactor()
+  property System.DateTimeOffset? CreatedAt { get; }
+  property System.DateTimeOffset? UpdatedAt { get; }
+  property System.String FactorType { get; }
+  property System.String FriendlyName { get; }
+  property System.String Id { get; }
+  property System.String Phone { get; }
+  property System.String Status { get; }
+
+public sealed class Supabase.Unity.AuthOAuthOptions
+  constructor Supabase.Unity.AuthOAuthOptions()
+  property Newtonsoft.Json.Linq.JObject QueryParameters { get; set; }
+  property System.Boolean OpenBrowser { get; set; }
+  property System.String RedirectTo { get; set; }
+  property System.String Scopes { get; set; }
+
+public sealed class Supabase.Unity.AuthOtpOptions
+  constructor Supabase.Unity.AuthOtpOptions()
+  property Newtonsoft.Json.Linq.JObject Data { get; set; }
+  property System.Boolean ShouldCreateUser { get; set; }
+  property System.String CaptchaToken { get; set; }
+  property System.String Channel { get; set; }
+  property System.String EmailRedirectTo { get; set; }
+
+public enum Supabase.Unity.AuthOtpType : System.Int32
+  Email = 0
+  EmailChange = 5
+  Invite = 2
+  MagicLink = 3
+  PhoneChange = 7
+  Recovery = 4
+  Signup = 1
+  Sms = 6
+
+public sealed class Supabase.Unity.AuthResponse
+  constructor Supabase.Unity.AuthResponse()
+  property Supabase.Unity.AuthSession Session { get; }
+  property Supabase.Unity.AuthUser User { get; }
+  property System.Int64 ExpiresAt { get; }
+  property System.Int64 ExpiresIn { get; }
+  property System.String AccessToken { get; }
+  property System.String ProviderRefreshToken { get; }
+  property System.String ProviderToken { get; }
+  property System.String RefreshToken { get; }
+  property System.String TokenType { get; }
+
+public sealed class Supabase.Unity.AuthSession
+  constructor Supabase.Unity.AuthSession()
+  method System.Boolean IsExpired(System.TimeSpan margin)
+  property Supabase.Unity.AuthUser User { get; }
+  property System.Int64 ExpiresAt { get; }
+  property System.Int64 ExpiresIn { get; }
+  property System.String AccessToken { get; }
+  property System.String ProviderRefreshToken { get; }
+  property System.String ProviderToken { get; }
+  property System.String RefreshToken { get; }
+  property System.String TokenType { get; }
+
+public enum Supabase.Unity.AuthSignOutScope : System.Int32
+  Global = 0
+  Local = 1
+  Others = 2
+
+public sealed class Supabase.Unity.AuthSignUpOptions
+  constructor Supabase.Unity.AuthSignUpOptions()
+  property Newtonsoft.Json.Linq.JObject Data { get; set; }
+  property System.String CaptchaToken { get; set; }
+  property System.String Channel { get; set; }
+  property System.String EmailRedirectTo { get; set; }
+
+public sealed class Supabase.Unity.AuthSsoOptions
+  constructor Supabase.Unity.AuthSsoOptions()
+  property System.String CaptchaToken { get; set; }
+  property System.String Domain { get; set; }
+  property System.String ProviderId { get; set; }
+  property System.String RedirectTo { get; set; }
+
+public sealed class Supabase.Unity.AuthSsoResponse
+  constructor Supabase.Unity.AuthSsoResponse()
+  property System.String Url { get; }
+
+public sealed class Supabase.Unity.AuthStateChangedEventArgs : System.EventArgs
+  property Supabase.Unity.AuthChangeEvent Event { get; }
+  property Supabase.Unity.AuthSession Session { get; }
+
+public sealed class Supabase.Unity.AuthTotpEnrollment
+  constructor Supabase.Unity.AuthTotpEnrollment()
+  property System.String QrCode { get; }
+  property System.String Secret { get; }
+  property System.String Uri { get; }
+
+public sealed class Supabase.Unity.AuthUser
+  constructor Supabase.Unity.AuthUser()
+  property Newtonsoft.Json.Linq.JObject AppMetadata { get; }
+  property Newtonsoft.Json.Linq.JObject UserMetadata { get; }
+  property System.Boolean IsAnonymous { get; }
+  property System.Collections.Generic.List<Supabase.Unity.AuthIdentity> Identities { get; }
+  property System.Collections.Generic.List<Supabase.Unity.AuthMfaFactor> Factors { get; }
+  property System.DateTimeOffset? CreatedAt { get; }
+  property System.DateTimeOffset? EmailConfirmedAt { get; }
+  property System.DateTimeOffset? LastSignInAt { get; }
+  property System.DateTimeOffset? PhoneConfirmedAt { get; }
+  property System.DateTimeOffset? UpdatedAt { get; }
+  property System.String Audience { get; }
+  property System.String Email { get; }
+  property System.String Id { get; }
+  property System.String Phone { get; }
+  property System.String Role { get; }
+
+public sealed class Supabase.Unity.DatabaseClient
+  method Supabase.Unity.PostgrestQuery<T> From<T>(System.String table = null)
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<T>> RpcAsync<T>(System.String function, System.Object parameters = null, Supabase.Unity.PostgrestCount count = Supabase.Unity.PostgrestCount.None, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+
+public sealed class Supabase.Unity.DefaultAuthCallbackProvider : Supabase.Unity.IAuthCallbackProvider, Supabase.Unity.IAuthCallbackSanitizer, System.IDisposable
+  constructor Supabase.Unity.DefaultAuthCallbackProvider()
+  event System.Action<System.Uri> CallbackReceived
+  method System.Void ClearSensitiveCallback(System.Uri callbackUri)
+  method System.Void Dispose()
+  method System.Void Open(System.Uri authorizationUri)
+  property System.Uri InitialCallback { get; }
+
+public sealed class Supabase.Unity.FunctionInvokeOptions
+  constructor Supabase.Unity.FunctionInvokeOptions()
+  property Supabase.Unity.SupabaseHttpMethod Method { get; set; }
+  property System.Byte[] RawBody { get; set; }
+  property System.Collections.Generic.Dictionary<System.String, System.String> Headers { get; }
+  property System.Object Body { get; set; }
+  property System.String ContentType { get; set; }
+  property System.TimeSpan? Timeout { get; set; }
+
+public sealed class Supabase.Unity.FunctionResponse
+  constructor Supabase.Unity.FunctionResponse()
+  property System.Byte[] Body { get; }
+  property System.Collections.Generic.IReadOnlyDictionary<System.String, System.String> Headers { get; }
+  property System.Int32 StatusCode { get; }
+  property System.String Text { get; }
+
+public sealed class Supabase.Unity.FunctionsClient
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.FunctionResponse>> InvokeAsync(System.String functionName, Supabase.Unity.FunctionInvokeOptions invokeOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<T>> InvokeAsync<T>(System.String functionName, Supabase.Unity.FunctionInvokeOptions invokeOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+
+public interface Supabase.Unity.IAuthCallbackProvider
+  event System.Action<System.Uri> CallbackReceived
+  method abstract System.Void Open(System.Uri authorizationUri)
+  property System.Uri InitialCallback { get; }
+
+public interface Supabase.Unity.IAuthCallbackSanitizer
+  method abstract System.Void ClearSensitiveCallback(System.Uri callbackUri)
+
+public interface Supabase.Unity.IAuthClient : System.IDisposable
+  event System.EventHandler<Supabase.Unity.AuthStateChangedEventArgs> StateChanged
+  method abstract Supabase.Unity.SupabaseResult<Supabase.Unity.AuthAssuranceLevel> GetAuthenticatorAssuranceLevel()
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthMfaChallenge>> ChallengeMfaAsync(System.String factorId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthMfaEnrollment>> EnrollMfaAsync(Supabase.Unity.AuthMfaEnrollOptions options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthResponse>> SignUpWithPasswordAsync(System.String email, System.String password, Supabase.Unity.AuthSignUpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> ChallengeAndVerifyMfaAsync(System.String factorId, System.String code, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> ExchangeCodeForSessionAsync(System.String code, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> HandleAuthCallbackAsync(System.Uri callback, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> InitializeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> RefreshSessionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SetSessionAsync(System.String accessToken, System.String refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SignInAnonymouslyAsync(Newtonsoft.Json.Linq.JObject data = null, System.String captchaToken = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SignInWithIdTokenAsync(Supabase.Unity.AuthIdTokenOptions options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> SignInWithPasswordAsync(System.String emailOrPhone, System.String password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> VerifyMfaAsync(System.String factorId, System.String challengeId, System.String code, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSession>> VerifyOtpAsync(System.String token, Supabase.Unity.AuthOtpType type, System.String emailOrPhone = null, System.String redirectTo = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthSsoResponse>> SignInWithSsoAsync(Supabase.Unity.AuthSsoOptions options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthUser>> GetUserAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthUser>> UnlinkIdentityAsync(System.String identityId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.AuthUser>> UpdateUserAsync(Newtonsoft.Json.Linq.JObject attributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.AuthIdentity>>> ListIdentitiesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.AuthMfaFactor>>> ListMfaFactorsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Uri>> LinkIdentityAsync(System.String provider, Supabase.Unity.AuthOAuthOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Uri>> SignInWithOAuthAsync(System.String provider, Supabase.Unity.AuthOAuthOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> ReauthenticateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> ResetPasswordForEmailAsync(System.String email, System.String redirectTo = null, System.String captchaToken = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> SignInWithOtpAsync(System.String emailOrPhone, Supabase.Unity.AuthOtpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> SignOutAsync(Supabase.Unity.AuthSignOutScope scope = Supabase.Unity.AuthSignOutScope.Global, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> UnenrollMfaAsync(System.String factorId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  property Supabase.Unity.AuthSession CurrentSession { get; }
+  property Supabase.Unity.AuthUser CurrentUser { get; }
+
+public interface Supabase.Unity.IHttpTransport : System.IDisposable
+  method abstract System.Threading.Tasks.Task<Supabase.Unity.SupabaseHttpResponse> SendAsync(Supabase.Unity.SupabaseHttpRequest request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+
+public interface Supabase.Unity.ISessionStore
+  method abstract System.Threading.Tasks.Task RemoveAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task SetAsync(System.String key, System.String value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task<System.String> GetAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+
+public interface Supabase.Unity.ISupabaseLogger
+  method abstract System.Void Log(Supabase.Unity.SupabaseLogLevel level, System.String message, System.Exception exception = null)
+
+public interface Supabase.Unity.IWebSocketTransport : System.IDisposable
+  event System.Action Opened
+  event System.Action<System.Exception> Error
+  event System.Action<System.Int32, System.String> Closed
+  event System.Action<System.String> MessageReceived
+  method abstract System.Threading.Tasks.Task CloseAsync(System.Int32 code = 1000, System.String reason = "Normal closure", System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task ConnectAsync(System.Uri uri, System.Collections.Generic.IReadOnlyDictionary<System.String, System.String> headers, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method abstract System.Threading.Tasks.Task SendTextAsync(System.String message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  property Supabase.Unity.SupabaseWebSocketState State { get; }
+
+public sealed class Supabase.Unity.MemorySessionStore : Supabase.Unity.ISessionStore
+  constructor Supabase.Unity.MemorySessionStore()
+  method System.Threading.Tasks.Task RemoveAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task SetAsync(System.String key, System.String value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<System.String> GetAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  property System.Collections.Generic.IEnumerable<System.String> Keys { get; }
+
+public sealed class Supabase.Unity.NativeWebSocketTransport : Supabase.Unity.IWebSocketTransport
+  constructor Supabase.Unity.NativeWebSocketTransport()
+  event System.Action Opened
+  event System.Action<System.Exception> Error
+  event System.Action<System.Int32, System.String> Closed
+  event System.Action<System.String> MessageReceived
+  method System.Threading.Tasks.Task CloseAsync(System.Int32 code = 1000, System.String reason = "Normal closure", System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task ConnectAsync(System.Uri uri, System.Collections.Generic.IReadOnlyDictionary<System.String, System.String> headers, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task SendTextAsync(System.String message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Void Dispose()
+  property Supabase.Unity.SupabaseWebSocketState State { get; }
+
+public sealed class Supabase.Unity.NullSupabaseLogger : Supabase.Unity.ISupabaseLogger
+  field static readonly Supabase.Unity.NullSupabaseLogger Instance
+  method System.Void Log(Supabase.Unity.SupabaseLogLevel level, System.String message, System.Exception exception = null)
+
+public enum Supabase.Unity.PostgrestCount : System.Int32
+  Estimated = 3
+  Exact = 1
+  None = 0
+  Planned = 2
+
+public enum Supabase.Unity.PostgrestFilterOperator : System.Int32
+  Adjacent = 20
+  ContainedBy = 11
+  Contains = 10
+  Equal = 0
+  GreaterThan = 2
+  GreaterThanOrEqual = 3
+  ILike = 7
+  IMatch = 15
+  In = 9
+  Is = 8
+  LessThan = 4
+  LessThanOrEqual = 5
+  Like = 6
+  Match = 14
+  NotEqual = 1
+  NotExtendLeft = 19
+  NotExtendRight = 18
+  Overlaps = 12
+  StrictlyLeft = 16
+  StrictlyRight = 17
+  TextSearch = 13
+
+public sealed class Supabase.Unity.PostgrestQuery<T>
+  method Supabase.Unity.PostgrestQuery<T> ContainedBy(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Contains(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Count(Supabase.Unity.PostgrestCount value = Supabase.Unity.PostgrestCount.Exact)
+  method Supabase.Unity.PostgrestQuery<T> Eq(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Filter(System.String column, Supabase.Unity.PostgrestFilterOperator op, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Gt(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Gte(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> ILike(System.String column, System.String pattern)
+  method Supabase.Unity.PostgrestQuery<T> In(System.String column, System.Object values)
+  method Supabase.Unity.PostgrestQuery<T> Is(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Like(System.String column, System.String pattern)
+  method Supabase.Unity.PostgrestQuery<T> Limit(System.Int32 value, System.String referencedTable = null)
+  method Supabase.Unity.PostgrestQuery<T> Lt(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Lte(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Match(System.Collections.Generic.IDictionary<System.String, System.Object> values)
+  method Supabase.Unity.PostgrestQuery<T> Neq(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Not(System.String column, Supabase.Unity.PostgrestFilterOperator op, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Offset(System.Int32 value, System.String referencedTable = null)
+  method Supabase.Unity.PostgrestQuery<T> Or(System.String expression, System.String referencedTable = null)
+  method Supabase.Unity.PostgrestQuery<T> Order(System.String column, System.Boolean ascending = true, System.Boolean nullsFirst = false, System.String referencedTable = null)
+  method Supabase.Unity.PostgrestQuery<T> Overlaps(System.String column, System.Object value)
+  method Supabase.Unity.PostgrestQuery<T> Range(System.Int32 from, System.Int32 to, System.String referencedTable = null)
+  method Supabase.Unity.PostgrestQuery<T> Select(System.String selectedColumns = "*")
+  method Supabase.Unity.PostgrestQuery<T> TextSearch(System.String column, System.String query, System.String config = null, System.String type = null)
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<T>>> DeleteAsync(Supabase.Unity.PostgrestWriteOptions writeOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<T>>> GetAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<T>>> InsertAsync(System.Collections.Generic.IEnumerable<T> values, Supabase.Unity.PostgrestWriteOptions writeOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<T>>> InsertAsync(T value, Supabase.Unity.PostgrestWriteOptions writeOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<T>>> UpdateAsync(System.Object values, Supabase.Unity.PostgrestWriteOptions writeOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<T>>> UpsertAsync(System.Object values, Supabase.Unity.PostgrestWriteOptions writeOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.String>> GetCsvAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<T>> MaybeSingleAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<T>> SingleAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+
+public enum Supabase.Unity.PostgrestReturn : System.Int32
+  Minimal = 0
+  Representation = 1
+
+public sealed class Supabase.Unity.PostgrestWriteOptions
+  constructor Supabase.Unity.PostgrestWriteOptions()
+  property Supabase.Unity.PostgrestCount Count { get; set; }
+  property Supabase.Unity.PostgrestReturn Returning { get; set; }
+  property System.Boolean DefaultToNull { get; set; }
+  property System.Boolean IgnoreDuplicates { get; set; }
+  property System.String OnConflict { get; set; }
+
+public sealed class Supabase.Unity.RealtimeChannel
+  event System.Action<Newtonsoft.Json.Linq.JObject> PresenceSynchronized
+  event System.Action<Supabase.Unity.RealtimeChannelState> StateChanged
+  event System.Action<Supabase.Unity.RealtimePresenceChange> PresenceChanged
+  event System.Action<Supabase.Unity.RealtimeSystemMessage> SystemMessageReceived
+  method Supabase.Unity.RealtimeChannel OnBroadcast(System.String eventName, System.Action<Newtonsoft.Json.Linq.JToken> callback)
+  method Supabase.Unity.RealtimeChannel OnPostgresChanges(Supabase.Unity.RealtimePostgresChangeFilter filter, System.Action<Supabase.Unity.RealtimePostgresChange> callback)
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> SendBroadcastAsync(System.String eventName, System.Object payload, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> SubscribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> TrackAsync(System.Object state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> UnsubscribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> UntrackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  property Newtonsoft.Json.Linq.JObject PresenceState { get; }
+  property Supabase.Unity.RealtimeChannelState State { get; }
+  property System.String Topic { get; }
+
+public sealed class Supabase.Unity.RealtimeChannelConfig
+  constructor Supabase.Unity.RealtimeChannelConfig()
+  property System.Boolean BroadcastAcknowledge { get; set; }
+  property System.Boolean BroadcastSelf { get; set; }
+  property System.Boolean Private { get; set; }
+  property System.String PresenceKey { get; set; }
+
+public enum Supabase.Unity.RealtimeChannelState : System.Int32
+  Closed = 0
+  Errored = 4
+  Joined = 2
+  Joining = 1
+  Leaving = 3
+
+public sealed class Supabase.Unity.RealtimeClient : System.IDisposable
+  event System.Action Connected
+  event System.Action<System.Exception> Error
+  event System.Action<System.Int32, System.String> Disconnected
+  method Supabase.Unity.RealtimeChannel Channel(System.String topic, Supabase.Unity.RealtimeChannelConfig config = null)
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> ConnectAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> DisconnectAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> RemoveAllChannelsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> RemoveChannelAsync(Supabase.Unity.RealtimeChannel channel, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> SetAuthAsync(System.String token = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Void Dispose()
+  property Supabase.Unity.SupabaseWebSocketState State { get; }
+  property System.Boolean IsConnected { get; }
+
+public sealed class Supabase.Unity.RealtimePostgresChange
+  constructor Supabase.Unity.RealtimePostgresChange()
+  method T New<T>()
+  method T Old<T>()
+  property Newtonsoft.Json.Linq.JObject NewRecord { get; }
+  property Newtonsoft.Json.Linq.JObject OldRecord { get; }
+  property Newtonsoft.Json.Linq.JObject RawPayload { get; }
+  property Newtonsoft.Json.Linq.JToken Errors { get; }
+  property Supabase.Unity.RealtimePostgresEvent Event { get; }
+  property System.DateTimeOffset? CommitTimestamp { get; }
+  property System.String Schema { get; }
+  property System.String Table { get; }
+
+public sealed class Supabase.Unity.RealtimePostgresChangeFilter
+  constructor Supabase.Unity.RealtimePostgresChangeFilter()
+  property Supabase.Unity.RealtimePostgresEvent Event { get; set; }
+  property System.String Filter { get; set; }
+  property System.String Schema { get; set; }
+  property System.String Table { get; set; }
+
+public enum Supabase.Unity.RealtimePostgresEvent : System.Int32
+  All = 0
+  Delete = 3
+  Insert = 1
+  Update = 2
+
+public sealed class Supabase.Unity.RealtimePresenceChange
+  constructor Supabase.Unity.RealtimePresenceChange()
+  property Newtonsoft.Json.Linq.JObject Joins { get; }
+  property Newtonsoft.Json.Linq.JObject Leaves { get; }
+  property Newtonsoft.Json.Linq.JObject RawPayload { get; }
+
+public sealed class Supabase.Unity.RealtimeSystemMessage
+  constructor Supabase.Unity.RealtimeSystemMessage()
+  property Newtonsoft.Json.Linq.JObject RawPayload { get; }
+  property System.Boolean IsError { get; }
+  property System.String Channel { get; }
+  property System.String Extension { get; }
+  property System.String Message { get; }
+  property System.String Status { get; }
+
+public sealed class Supabase.Unity.StorageBucket
+  constructor Supabase.Unity.StorageBucket()
+  property System.Boolean IsPublic { get; }
+  property System.Collections.Generic.List<System.String> AllowedMimeTypes { get; }
+  property System.DateTimeOffset? CreatedAt { get; }
+  property System.DateTimeOffset? UpdatedAt { get; }
+  property System.Int64? FileSizeLimit { get; }
+  property System.String Id { get; }
+  property System.String Name { get; }
+  property System.String Owner { get; }
+
+public sealed class Supabase.Unity.StorageBucketClient
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageFileResult>> CopyAsync(System.String fromPath, System.String toPath, System.String destinationBucket = null, System.Boolean upsert = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageFileResult>> MoveAsync(System.String fromPath, System.String toPath, System.String destinationBucket = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageFileResult>> UpdateAsync(System.String path, System.Byte[] data, Supabase.Unity.StorageUploadOptions uploadOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageFileResult>> UploadAsync(System.String path, System.Byte[] data, Supabase.Unity.StorageUploadOptions uploadOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageFileResult>> UploadToSignedUrlAsync(System.String path, System.String token, System.Byte[] data, Supabase.Unity.StorageUploadOptions uploadOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageObject>> InfoAsync(System.String path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageSignedUrl>> CreateSignedUploadUrlAsync(System.String path, System.Boolean upsert = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageSignedUrl>> CreateSignedUrlAsync(System.String path, System.Int32 expiresInSeconds, Supabase.Unity.StorageTransformOptions transform = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Byte[]>> DownloadAsync(System.String path, Supabase.Unity.StorageTransformOptions transform = null, System.IProgress<System.Single> progress = null, System.Action<System.Byte[]> chunk = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.StorageObject>>> ListAsync(System.String prefix = null, Supabase.Unity.StorageListOptions listOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.StorageObject>>> RemoveAsync(System.Collections.Generic.IEnumerable<System.String> paths, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.StorageSignedUrl>>> CreateSignedUrlsAsync(System.Collections.Generic.IEnumerable<System.String> paths, System.Int32 expiresInSeconds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Uri GetPublicUrl(System.String path, Supabase.Unity.StorageTransformOptions transform = null, System.Boolean download = false, System.String downloadFileName = null)
+  property System.String BucketId { get; }
+
+public sealed class Supabase.Unity.StorageBucketOptions
+  constructor Supabase.Unity.StorageBucketOptions()
+  property System.Boolean IsPublic { get; set; }
+  property System.Collections.Generic.IReadOnlyList<System.String> AllowedMimeTypes { get; set; }
+  property System.Int64? FileSizeLimit { get; set; }
+
+public sealed class Supabase.Unity.StorageClient
+  method Supabase.Unity.StorageBucketClient From(System.String bucketId)
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageBucket>> CreateBucketAsync(System.String bucketId, Supabase.Unity.StorageBucketOptions bucketOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageBucket>> GetBucketAsync(System.String bucketId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<Supabase.Unity.StorageBucket>> UpdateBucketAsync(System.String bucketId, Supabase.Unity.StorageBucketOptions bucketOptions, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult<System.Collections.Generic.IReadOnlyList<Supabase.Unity.StorageBucket>>> ListBucketsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> DeleteBucketAsync(System.String bucketId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> EmptyBucketAsync(System.String bucketId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+
+public sealed class Supabase.Unity.StorageFileResult
+  constructor Supabase.Unity.StorageFileResult()
+  property System.String FullPath { get; }
+  property System.String Id { get; }
+  property System.String Path { get; }
+
+public sealed class Supabase.Unity.StorageListOptions
+  constructor Supabase.Unity.StorageListOptions()
+  property Supabase.Unity.StorageSortOptions SortBy { get; set; }
+  property System.Int32? Limit { get; set; }
+  property System.Int32? Offset { get; set; }
+  property System.String Search { get; set; }
+
+public sealed class Supabase.Unity.StorageObject
+  constructor Supabase.Unity.StorageObject()
+  property Newtonsoft.Json.Linq.JObject Metadata { get; }
+  property Newtonsoft.Json.Linq.JObject UserMetadata { get; }
+  property System.DateTimeOffset? CreatedAt { get; }
+  property System.DateTimeOffset? LastAccessedAt { get; }
+  property System.DateTimeOffset? UpdatedAt { get; }
+  property System.String BucketId { get; }
+  property System.String Id { get; }
+  property System.String Name { get; }
+  property System.String Owner { get; }
+  property System.String OwnerId { get; }
+  property System.String Version { get; }
+
+public enum Supabase.Unity.StorageResizeMode : System.Int32
+  Contain = 1
+  Cover = 0
+  Fill = 2
+
+public sealed class Supabase.Unity.StorageSignedUrl
+  constructor Supabase.Unity.StorageSignedUrl()
+  property System.String Path { get; }
+  property System.String SignedUrl { get; }
+  property System.String Token { get; }
+
+public sealed class Supabase.Unity.StorageSortOptions
+  constructor Supabase.Unity.StorageSortOptions()
+  property System.String Column { get; set; }
+  property System.String Order { get; set; }
+
+public sealed class Supabase.Unity.StorageTransformOptions
+  constructor Supabase.Unity.StorageTransformOptions()
+  property Supabase.Unity.StorageResizeMode? Resize { get; set; }
+  property System.Int32? Height { get; set; }
+  property System.Int32? Quality { get; set; }
+  property System.Int32? Width { get; set; }
+  property System.String Format { get; set; }
+
+public sealed class Supabase.Unity.StorageUploadOptions
+  constructor Supabase.Unity.StorageUploadOptions()
+  property Newtonsoft.Json.Linq.JObject Metadata { get; set; }
+  property System.Boolean Upsert { get; set; }
+  property System.Collections.Generic.Dictionary<System.String, System.String> Headers { get; }
+  property System.IProgress<System.Single> Progress { get; set; }
+  property System.String CacheControl { get; set; }
+  property System.String ContentType { get; set; }
+
+public sealed class Supabase.Unity.SupabaseClient : System.IDisposable
+  constructor Supabase.Unity.SupabaseClient(Supabase.Unity.SupabaseClientOptions options)
+  constructor Supabase.Unity.SupabaseClient(Supabase.Unity.SupabaseSettings settings)
+  constructor Supabase.Unity.SupabaseClient(System.String projectUrl, System.String publishableKey)
+  method Supabase.Unity.PostgrestQuery<T> From<T>(System.String table = null)
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseResult> InitializeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Void Dispose()
+  property Supabase.Unity.DatabaseClient Database { get; }
+  property Supabase.Unity.FunctionsClient Functions { get; }
+  property Supabase.Unity.IAuthClient Auth { get; }
+  property Supabase.Unity.RealtimeClient Realtime { get; }
+  property Supabase.Unity.StorageClient Storage { get; }
+  property Supabase.Unity.SupabaseClientOptions Options { get; }
+  property Supabase.Unity.SupabaseResolvedEndpoints Endpoints { get; }
+
+public sealed class Supabase.Unity.SupabaseClientOptions
+  constructor Supabase.Unity.SupabaseClientOptions()
+  method Supabase.Unity.SupabaseResolvedEndpoints ValidateAndResolve()
+  property Supabase.Unity.IAuthCallbackProvider AuthCallbackProvider { get; set; }
+  property Supabase.Unity.IHttpTransport HttpTransport { get; set; }
+  property Supabase.Unity.ISessionStore PkceStore { get; set; }
+  property Supabase.Unity.ISessionStore SessionStore { get; set; }
+  property Supabase.Unity.ISupabaseLogger Logger { get; set; }
+  property Supabase.Unity.SupabaseEndpointOptions Endpoints { get; set; }
+  property System.Boolean AutoConnectRealtime { get; set; }
+  property System.Boolean AutoRefreshToken { get; set; }
+  property System.Boolean PersistSession { get; set; }
+  property System.Collections.Generic.Dictionary<System.String, System.String> Headers { get; }
+  property System.Func<Supabase.Unity.IWebSocketTransport> WebSocketTransportFactory { get; set; }
+  property System.String DefaultSchema { get; set; }
+  property System.String ProjectUrl { get; set; }
+  property System.String PublishableKey { get; set; }
+  property System.TimeSpan HttpTimeout { get; set; }
+  property System.TimeSpan RealtimeHeartbeatInterval { get; set; }
+
+[attribute-usage targets=Property, Field allow-multiple=false inherited=true]
+public sealed class Supabase.Unity.SupabaseColumnAttribute : System.Attribute
+  constructor Supabase.Unity.SupabaseColumnAttribute(System.String name)
+  property System.String Name { get; }
+
+public sealed class Supabase.Unity.SupabaseConfigurationException : System.Exception
+  constructor Supabase.Unity.SupabaseConfigurationException(System.String message)
+
+public sealed class Supabase.Unity.SupabaseEndpointOptions
+  constructor Supabase.Unity.SupabaseEndpointOptions()
+  field System.String AuthUrl
+  field System.String DatabaseUrl
+  field System.String FunctionsUrl
+  field System.String RealtimeUrl
+  field System.String StorageUrl
+
+public sealed class Supabase.Unity.SupabaseError
+  constructor Supabase.Unity.SupabaseError()
+  method override System.String ToString()
+  property Supabase.Unity.SupabaseErrorKind Kind { get; }
+  property Supabase.Unity.SupabaseService Service { get; }
+  property System.Boolean IsRetryable { get; }
+  property System.Int32? StatusCode { get; }
+  property System.String Code { get; }
+  property System.String Details { get; }
+  property System.String Hint { get; }
+  property System.String Message { get; }
+  property System.String RawResponse { get; }
+
+public enum Supabase.Unity.SupabaseErrorKind : System.Int32
+  Cancelled = 3
+  Configuration = 0
+  Http = 4
+  Protocol = 5
+  Serialization = 6
+  Timeout = 2
+  Transport = 1
+  Unknown = 8
+  UnsupportedPlatform = 7
+
+public enum Supabase.Unity.SupabaseHttpMethod : System.Int32
+  Delete = 4
+  Get = 0
+  Head = 5
+  Patch = 3
+  Post = 1
+  Put = 2
+
+public sealed class Supabase.Unity.SupabaseHttpRequest
+  constructor Supabase.Unity.SupabaseHttpRequest()
+  property Supabase.Unity.SupabaseHttpMethod Method { get; set; }
+  property System.Action<System.Byte[]> DownloadChunk { get; set; }
+  property System.Byte[] Body { get; set; }
+  property System.Collections.Generic.Dictionary<System.String, System.String> Headers { get; }
+  property System.IProgress<System.Single> DownloadProgress { get; set; }
+  property System.IProgress<System.Single> UploadProgress { get; set; }
+  property System.String ContentType { get; set; }
+  property System.TimeSpan Timeout { get; set; }
+  property System.Uri Uri { get; set; }
+
+public sealed class Supabase.Unity.SupabaseHttpResponse
+  constructor Supabase.Unity.SupabaseHttpResponse()
+  property System.Boolean IsSuccessStatusCode { get; }
+  property System.Boolean TimedOut { get; }
+  property System.Boolean WasCancelled { get; }
+  property System.Byte[] Body { get; }
+  property System.Collections.Generic.Dictionary<System.String, System.String> Headers { get; }
+  property System.Int32 StatusCode { get; }
+  property System.String Text { get; }
+  property System.String TransportError { get; }
+
+public static class Supabase.Unity.SupabaseKeyValidator
+  method static System.Void ValidateClientKey(System.String key)
+
+public enum Supabase.Unity.SupabaseLogLevel : System.Int32
+  Debug = 0
+  Error = 3
+  Information = 1
+  Warning = 2
+
+public class Supabase.Unity.SupabaseOperationException : System.Exception
+  constructor Supabase.Unity.SupabaseOperationException(Supabase.Unity.SupabaseError error)
+  property Supabase.Unity.SupabaseError Error { get; }
+
+[attribute-usage targets=Property, Field allow-multiple=false inherited=true]
+public sealed class Supabase.Unity.SupabasePrimaryKeyAttribute : System.Attribute
+  constructor Supabase.Unity.SupabasePrimaryKeyAttribute()
+
+public sealed class Supabase.Unity.SupabaseResolvedEndpoints
+  property System.Uri Auth { get; }
+  property System.Uri Database { get; }
+  property System.Uri Functions { get; }
+  property System.Uri Realtime { get; }
+  property System.Uri Storage { get; }
+
+public sealed class Supabase.Unity.SupabaseResponseMetadata
+  constructor Supabase.Unity.SupabaseResponseMetadata()
+  property System.Collections.Generic.IReadOnlyDictionary<System.String, System.String> Headers { get; }
+  property System.Int32 StatusCode { get; }
+  property System.Int64? Count { get; }
+
+public sealed class Supabase.Unity.SupabaseResult
+  method System.Void ThrowIfFailed()
+  method static Supabase.Unity.SupabaseResult Failure(Supabase.Unity.SupabaseError error, Supabase.Unity.SupabaseResponseMetadata metadata = null)
+  method static Supabase.Unity.SupabaseResult Success(Supabase.Unity.SupabaseResponseMetadata metadata = null)
+  property Supabase.Unity.SupabaseError Error { get; }
+  property Supabase.Unity.SupabaseResponseMetadata Metadata { get; }
+  property System.Boolean IsSuccess { get; }
+
+public sealed class Supabase.Unity.SupabaseResult<T>
+  method T GetValueOrThrow()
+  method static Supabase.Unity.SupabaseResult<T> Failure(Supabase.Unity.SupabaseError error, Supabase.Unity.SupabaseResponseMetadata metadata = null)
+  method static Supabase.Unity.SupabaseResult<T> Success(T data, Supabase.Unity.SupabaseResponseMetadata metadata = null)
+  property Supabase.Unity.SupabaseError Error { get; }
+  property Supabase.Unity.SupabaseResponseMetadata Metadata { get; }
+  property System.Boolean IsSuccess { get; }
+  property T Data { get; }
+
+public enum Supabase.Unity.SupabaseService : System.Int32
+  Auth = 1
+  Client = 0
+  Database = 2
+  Functions = 5
+  Realtime = 3
+  Storage = 4
+
+public sealed class Supabase.Unity.SupabaseSettings : UnityEngine.ScriptableObject
+  constructor Supabase.Unity.SupabaseSettings()
+  method Supabase.Unity.SupabaseClientOptions ToOptions()
+  property System.String DefaultSchema { get; }
+  property System.String ProjectUrl { get; }
+  property System.String PublishableKey { get; }
+
+[attribute-usage targets=Class allow-multiple=false inherited=true]
+public sealed class Supabase.Unity.SupabaseTableAttribute : System.Attribute
+  constructor Supabase.Unity.SupabaseTableAttribute(System.String name)
+  property System.String Name { get; }
+
+public static class Supabase.Unity.SupabaseTaskExtensions
+  method extension static System.Collections.IEnumerator AsCoroutine(System.Threading.Tasks.Task task, System.Action completed = null, System.Action<System.Exception> failed = null)
+  method extension static System.Collections.IEnumerator AsCoroutine<T>(System.Threading.Tasks.Task<T> task, System.Action<T> completed, System.Action<System.Exception> failed = null)
+
+public enum Supabase.Unity.SupabaseWebSocketState : System.Int32
+  Closed = 0
+  Closing = 3
+  Connecting = 1
+  Faulted = 4
+  Open = 2
+
+public sealed class Supabase.Unity.UnencryptedFileSessionStore : Supabase.Unity.ISessionStore
+  constructor Supabase.Unity.UnencryptedFileSessionStore(System.String directory = null)
+  method System.Threading.Tasks.Task RemoveAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task SetAsync(System.String key, System.String value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<System.String> GetAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+
+public sealed class Supabase.Unity.UnityWebRequestTransport : Supabase.Unity.IHttpTransport
+  constructor Supabase.Unity.UnityWebRequestTransport()
+  method System.Threading.Tasks.Task<Supabase.Unity.SupabaseHttpResponse> SendAsync(Supabase.Unity.SupabaseHttpRequest request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Void Dispose()
+
+public sealed class Supabase.Unity.WebGlWebSocketTransport : Supabase.Unity.IWebSocketTransport
+  constructor Supabase.Unity.WebGlWebSocketTransport()
+  event System.Action Opened
+  event System.Action<System.Exception> Error
+  event System.Action<System.Int32, System.String> Closed
+  event System.Action<System.String> MessageReceived
+  method System.Threading.Tasks.Task CloseAsync(System.Int32 code = 1000, System.String reason = "Normal closure", System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task ConnectAsync(System.Uri uri, System.Collections.Generic.IReadOnlyDictionary<System.String, System.String> headers, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task SendTextAsync(System.String message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Void Dispose()
+  property Supabase.Unity.SupabaseWebSocketState State { get; }
+
+public sealed class Supabase.Unity.WebLocalStorageSessionStore : Supabase.Unity.ISessionStore
+  constructor Supabase.Unity.WebLocalStorageSessionStore()
+  method System.Threading.Tasks.Task RemoveAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task SetAsync(System.String key, System.String value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+  method System.Threading.Tasks.Task<System.String> GetAsync(System.String key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
