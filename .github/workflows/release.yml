@@ -25,6 +25,8 @@ jobs:
           fetch-depth: 0
       - name: Validate package
         run: python3 .github/scripts/validate_package.py
+      - name: Test deterministic archive construction
+        run: python3 .github/scripts/test_build_release.py
       - name: Match tag to package version
         env:
           RELEASE_TAG: ${{ github.ref_name }}

@@ -28,6 +28,7 @@ TEXT_SUFFIXES = {
     ".md",
     ".meta",
     ".sql",
+    ".txt",
     ".xml",
 }
 

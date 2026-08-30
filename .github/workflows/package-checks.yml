@@ -23,6 +23,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate package and release boundary
         run: python3 .github/scripts/validate_package.py
+      - name: Test deterministic archive construction
+        run: python3 .github/scripts/test_build_release.py
       - name: Build and verify release archives
         run: python3 .github/scripts/build_release.py --output /tmp/supabase-unity-release
       - name: Verify release notes

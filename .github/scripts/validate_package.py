@@ -337,6 +337,12 @@ def validate_workflows() -> None:
     package_checks = read_text(workflow_dir / "package-checks.yml")
     if not package_checks.startswith("name: License-free package checks"):
         fail("package-checks.yml must state that hosted checks are license-free")
+    if "python3 .github/scripts/test_build_release.py" not in package_checks:
+        fail("package-checks.yml must run the deterministic archive regression tests")
+
+    release = read_text(workflow_dir / "release.yml")
+    if "python3 .github/scripts/test_build_release.py" not in release:
+        fail("release.yml must run the deterministic archive regression tests")
 
 
 def main() -> int:
