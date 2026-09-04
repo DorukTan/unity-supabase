@@ -22,7 +22,7 @@ body:
     attributes:
       label: Package version
       description: From package.json, or the git tag you installed.
-      placeholder: 0.2.0-beta.8
+      placeholder: 0.2.0-rc.1
     validations:
       required: true
 
