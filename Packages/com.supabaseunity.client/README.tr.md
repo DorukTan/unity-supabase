@@ -10,7 +10,7 @@ Bu paket Unity 2021.3 LTS ile Unity 6 arasında aynı API ile Auth, Database, Re
 Package Manager’da **Add package from git URL** seçeneğine şunu gir:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-rc.1
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0
 ```
 
 Ardından **Tools > Supabase > Setup** ekranını açıp ayar dosyasını oluştur. Supabase Dashboard’daki **Connect** ekranından proje URL’sini ve `sb_publishable_...` anahtarını al, sonra **Test Project Connection** düğmesine bas. Bu test bağlantıyı ve anahtarı kontrol eder; RLS kurallarını değiştirmez. Eski `anon` JWT anahtarları da desteklenir.
