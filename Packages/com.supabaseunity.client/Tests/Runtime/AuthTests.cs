@@ -1073,6 +1073,64 @@ namespace Supabase.Unity.Tests
         }
 
         [Test]
+        public void DisposedAuth_RejectsOperationsBeforeSideEffects(
+            [Values("otp", "oauth", "callback", "callback-error", "sso", "recover",
+                "get-user", "update-user", "reauthenticate", "link-identity", "unlink-identity",
+                "list-identities", "assurance-level")] string operation,
+            [Values(false, true)] bool signedIn)
+        {
+            var transport = new RecordingHttpTransport().Enqueue(200, SessionJson);
+            var pkceStore = new GatedSessionStore();
+            var callbacks = new FakeCallbackProvider();
+            var options = ConfigurationTests.ValidOptions();
+            options.HttpTransport = transport;
+            options.PkceStore = pkceStore;
+            options.AuthCallbackProvider = callbacks;
+            options.AutoRefreshToken = false;
+            var client = new SupabaseClient(options);
+            if (signedIn)
+                Assert.IsTrue(client.Auth.SignInWithPasswordAsync("a@b.co", "password")
+                    .GetAwaiter().GetResult().IsSuccess);
+            var requestCount = transport.Requests.Count;
+            var session = client.Auth.CurrentSession;
+            client.Dispose();
+
+            Exception failure = null;
+            try
+            {
+                switch (operation)
+                {
+                    case "otp": client.Auth.SignInWithOtpAsync("a@b.co").GetAwaiter().GetResult(); break;
+                    case "oauth": client.Auth.SignInWithOAuthAsync("github").GetAwaiter().GetResult(); break;
+                    case "callback": client.Auth.HandleAuthCallbackAsync(new Uri("myapp://auth"))
+                        .GetAwaiter().GetResult(); break;
+                    case "callback-error": client.Auth.HandleAuthCallbackAsync(
+                        new Uri("myapp://auth?error=access_denied")).GetAwaiter().GetResult(); break;
+                    case "sso": client.Auth.SignInWithSsoAsync(new AuthSsoOptions { Domain = "example.com" })
+                        .GetAwaiter().GetResult(); break;
+                    case "recover": client.Auth.ResetPasswordForEmailAsync("a@b.co")
+                        .GetAwaiter().GetResult(); break;
+                    case "get-user": client.Auth.GetUserAsync().GetAwaiter().GetResult(); break;
+                    case "update-user": client.Auth.UpdateUserAsync(new JObject()).GetAwaiter().GetResult(); break;
+                    case "reauthenticate": client.Auth.ReauthenticateAsync().GetAwaiter().GetResult(); break;
+                    case "link-identity": client.Auth.LinkIdentityAsync("github").GetAwaiter().GetResult(); break;
+                    case "unlink-identity": client.Auth.UnlinkIdentityAsync("identity-1")
+                        .GetAwaiter().GetResult(); break;
+                    case "list-identities": client.Auth.ListIdentitiesAsync().GetAwaiter().GetResult(); break;
+                    case "assurance-level": client.Auth.GetAuthenticatorAssuranceLevel(); break;
+                    default: Assert.Fail("Unknown Auth operation: " + operation); break;
+                }
+            }
+            catch (Exception exception) { failure = exception; }
+
+            Assert.IsNull(pkceStore.StoredValue, "Disposed Auth must not write a PKCE verifier.");
+            Assert.AreEqual(0, callbacks.Opened.Count, "Disposed Auth must not open the browser.");
+            Assert.AreEqual(requestCount, transport.Requests.Count, "Disposed Auth must not send HTTP requests.");
+            Assert.AreSame(session, client.Auth.CurrentSession, "Disposed Auth must preserve the last session.");
+            Assert.IsInstanceOf<ObjectDisposedException>(failure);
+        }
+
+        [Test]
         public void OAuthVerifier_SurvivesAppRestartBetweenAuthorizeAndCallback()
         {
             // A durable store stands in for disk. It outlives the client, as real

@@ -12,7 +12,7 @@ In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
 **Window > Package Management > Package Manager**. Select **Add package from git URL**, then enter:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-rc.1
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0
 ```
 
 Release tarballs and `.unitypackage` files are available on the

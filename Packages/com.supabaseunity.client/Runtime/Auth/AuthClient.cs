@@ -203,6 +203,7 @@ namespace Supabase.Unity
             AuthOtpOptions otpOptions = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(emailOrPhone, "emailOrPhone");
             otpOptions = otpOptions ?? new AuthOtpOptions();
             var body = new JObject
@@ -272,6 +273,7 @@ namespace Supabase.Unity
             AuthOAuthOptions oauthOptions = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(provider, "provider");
             oauthOptions = oauthOptions ?? new AuthOAuthOptions();
             var verifierChallenge = await CreatePkceAsync(cancellationToken);
@@ -337,6 +339,7 @@ namespace Supabase.Unity
             Uri callback,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             if (callback == null)
                 throw new ArgumentNullException("callback");
             var parameters = ParseParameters(callback);
@@ -368,6 +371,7 @@ namespace Supabase.Unity
             AuthSsoOptions ssoOptions,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             if (ssoOptions == null)
                 throw new ArgumentNullException("ssoOptions");
             if (string.IsNullOrWhiteSpace(ssoOptions.Domain) && string.IsNullOrWhiteSpace(ssoOptions.ProviderId))
@@ -440,6 +444,7 @@ namespace Supabase.Unity
         public async Task<SupabaseResult<AuthUser>> GetUserAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             AuthSession requestSession;
             if (!TryCaptureAuthenticatedSession(out requestSession))
                 return SupabaseResult<AuthUser>.Failure(NotAuthenticated());
@@ -460,6 +465,7 @@ namespace Supabase.Unity
             JObject attributes,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             if (attributes == null)
                 throw new ArgumentNullException("attributes");
             AuthSession requestSession;
@@ -486,6 +492,7 @@ namespace Supabase.Unity
             string captchaToken = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(email, "email");
             var body = new JObject
             {
@@ -501,6 +508,7 @@ namespace Supabase.Unity
         public Task<SupabaseResult> ReauthenticateAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             if (CurrentSession == null)
                 return Task.FromResult(SupabaseResult.Failure(NotAuthenticated()));
             return RequestEmptyAsync(SupabaseHttpMethod.Get, "reauthenticate", null, null, cancellationToken);
@@ -545,6 +553,7 @@ namespace Supabase.Unity
             AuthOAuthOptions oauthOptions = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             if (CurrentSession == null)
                 return SupabaseResult<Uri>.Failure(NotAuthenticated());
             Require(provider, "provider");
@@ -583,6 +592,7 @@ namespace Supabase.Unity
             string identityId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
             Require(identityId, "identityId");
             AuthSession requestSession;
             if (!TryCaptureAuthenticatedSession(out requestSession))
@@ -702,6 +712,7 @@ namespace Supabase.Unity
 
         public SupabaseResult<AuthAssuranceLevel> GetAuthenticatorAssuranceLevel()
         {
+            ThrowIfDisposed();
             if (CurrentSession == null || string.IsNullOrWhiteSpace(CurrentSession.AccessToken))
                 return SupabaseResult<AuthAssuranceLevel>.Failure(NotAuthenticated());
             try

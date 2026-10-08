@@ -116,6 +116,8 @@ namespace Supabase.Unity
                 DefaultSchema = "public";
             if (HttpTimeout <= TimeSpan.Zero)
                 throw new SupabaseConfigurationException("HttpTimeout must be greater than zero.");
+            if (RealtimeHeartbeatInterval <= TimeSpan.Zero)
+                throw new SupabaseConfigurationException("RealtimeHeartbeatInterval must be greater than zero.");
 
             if (Endpoints == null)
                 Endpoints = new SupabaseEndpointOptions();

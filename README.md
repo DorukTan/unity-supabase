@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-rc.1"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0--rc.1-3ecf8e" /></a>
-  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0-rc.1/com.supabaseunity.client-0.2.0-rc.1.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0/com.supabaseunity.client-0.2.0.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
   <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
@@ -75,13 +75,13 @@ In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
 **Window > Package Management > Package Manager**. Choose **Add package from git URL**, then paste:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0-rc.1
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0
 ```
 
 ✅ **Done.** Newtonsoft Json.NET comes with it automatically.
 
 Prefer a file download? The
-[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0-rc.1)
+[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0)
 also includes:
 
 - 📦 A `.unitypackage` for **Assets > Import Package > Custom Package**.

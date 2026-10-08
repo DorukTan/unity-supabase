@@ -13,7 +13,14 @@ var ready = await client.InitializeAsync();
 
 `InitializeAsync` restores Auth state and, when enabled in settings, opens Realtime. Dispose the client when its owning game subsystem is destroyed.
 
+`SupabaseClientOptions.RealtimeHeartbeatInterval` defaults to 25 seconds and must be greater
+than zero. Invalid intervals throw `SupabaseConfigurationException` when the client is created.
+
 ## Auth
+
+After the client is disposed, Auth operations throw `ObjectDisposedException` before starting
+new requests, writing sign-in verifiers, or opening the browser. `CurrentSession` and
+`CurrentUser` remain readable as the last local state; disposal does not sign the user out.
 
 ```csharp
 await client.Auth.SignUpWithPasswordAsync(email, password, new AuthSignUpOptions

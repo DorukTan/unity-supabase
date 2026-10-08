@@ -75,6 +75,31 @@ namespace Supabase.Unity.Tests
             Assert.IsFalse(new SupabaseClientOptions().PersistSession);
         }
 
+        [TestCase(0)]
+        [TestCase(-1)]
+        [TestCase(long.MinValue)]
+        public void NonPositiveRealtimeHeartbeatInterval_IsRejected(long ticks)
+        {
+            var options = ValidOptions();
+            options.RealtimeHeartbeatInterval = TimeSpan.FromTicks(ticks);
+
+            var exception = Assert.Throws<SupabaseConfigurationException>(delegate
+            {
+                options.ValidateAndResolve();
+            });
+            StringAssert.Contains("RealtimeHeartbeatInterval", exception.Message);
+        }
+
+        [TestCase(1)]
+        [TestCase(250000000)]
+        public void PositiveRealtimeHeartbeatInterval_IsAccepted(long ticks)
+        {
+            var options = ValidOptions();
+            options.RealtimeHeartbeatInterval = TimeSpan.FromTicks(ticks);
+
+            Assert.DoesNotThrow(delegate { options.ValidateAndResolve(); });
+        }
+
         [Test]
         public void SecretKey_IsRejected()
         {

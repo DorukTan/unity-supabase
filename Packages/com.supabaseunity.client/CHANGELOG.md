@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-08
+
+### Fixed
+
+- Nonpositive `RealtimeHeartbeatInterval` values are rejected during configuration validation,
+  preventing Realtime heartbeats from running without a delay.
+- Auth operations after disposal now reject calls before writing PKCE verifiers, opening the
+  browser, processing callbacks, or returning a result from the retained session.
+
 ## [0.2.0-rc.1] - 2026-08-27
 
 ### Added
