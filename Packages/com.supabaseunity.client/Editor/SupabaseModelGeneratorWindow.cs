@@ -315,10 +315,10 @@ namespace Supabase.Unity.Editor
         {
             if (string.IsNullOrWhiteSpace(key))
                 throw new InvalidOperationException(
-                    "Enter an sb_secret_ API key from Supabase Dashboard > Settings > API Keys. It is used only for schema generation.");
+                    "Enter a secret API key from Supabase Dashboard > Settings > API Keys. It is used only for schema generation.");
             if (!key.Trim().StartsWith("sb_secret_", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
-                    "The schema endpoint requires an sb_secret_ API key. Do not replace the publishable key in SupabaseSettings.");
+                    "The schema endpoint requires a secret API key. Do not replace the publishable key in SupabaseSettings.");
             foreach (var character in key.Trim())
                 if (!(char.IsLetterOrDigit(character) || character == '_' || character == '-'))
                     throw new InvalidOperationException("The secret API key contains invalid characters.");

@@ -16,6 +16,26 @@ namespace Supabase.Unity.Tests
 {
     public sealed class ModelGeneratorTests
     {
+        [Test]
+        public void ModelGeneration_MissingSecretGivesReadableGuidance()
+        {
+            var window = ScriptableObject.CreateInstance<SupabaseModelGeneratorWindow>();
+            try
+            {
+                Set(window, "projectUrl", "https://example.supabase.co");
+                var task = window.GenerateModelsAsync();
+                Assert.IsTrue(task.IsCompleted);
+                Assert.IsFalse(task.IsFaulted);
+                StringAssert.Contains("Enter a secret API key", Get<string>(window, "status"));
+                StringAssert.DoesNotContain("[REDACTED]", Get<string>(window, "status"));
+                Assert.AreEqual(MessageType.Error, Get<MessageType>(window, "statusType"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(window);
+            }
+        }
+
         [TestCase(PlayModeStateChange.ExitingEditMode)]
         [TestCase(PlayModeStateChange.ExitingPlayMode)]
         public void ModelGeneration_PlayModeTransitionCancelsOwnedWork(PlayModeStateChange state)
