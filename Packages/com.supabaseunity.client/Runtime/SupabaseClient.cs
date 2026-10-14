@@ -12,6 +12,8 @@ namespace Supabase.Unity
         private readonly IDisposable ownedCallbackProvider;
         private bool disposed;
 
+        internal event Action<SupabaseClient> Disposed;
+
         public SupabaseClientOptions Options { get; private set; }
         public SupabaseResolvedEndpoints Endpoints { get; private set; }
         public IAuthClient Auth { get; private set; }
@@ -31,11 +33,16 @@ namespace Supabase.Unity
         }
 
         public SupabaseClient(SupabaseClientOptions options)
+            : this(options, false)
+        {
+        }
+
+        internal SupabaseClient(SupabaseClientOptions options, bool ownsConfiguredTransport)
         {
             Options = options ?? throw new ArgumentNullException("options");
             Endpoints = Options.ValidateAndResolve();
             transport = Options.HttpTransport ?? new UnityWebRequestTransport();
-            ownsTransport = Options.HttpTransport == null;
+            ownsTransport = Options.HttpTransport == null || ownsConfiguredTransport;
             var sessionStore = Options.SessionStore ?? PlatformSessionStore.Create(Options.PersistSession);
             var pkceStore = Options.PkceStore ?? PlatformSessionStore.CreateDurable();
             var callbackProvider = Options.AuthCallbackProvider;
@@ -98,6 +105,9 @@ namespace Supabase.Unity
                 transport.Dispose();
             if (ownedCallbackProvider != null)
                 ownedCallbackProvider.Dispose();
+            var handler = Disposed;
+            if (handler != null)
+                handler(this);
         }
 
         private void OnAuthStateChanged(object sender, AuthStateChangedEventArgs eventArgs)

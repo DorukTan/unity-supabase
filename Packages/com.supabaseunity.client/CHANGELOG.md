@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-14
+
+### Added
+
+- `SupabaseEditorClient.Create` supports explicit HTTP operations outside Play mode through
+  an Editor update-driven transport. Clients use memory-only Auth/PKCE stores and manual
+  session refresh; Realtime and automatic browser authentication remain unsupported.
+- Editor clients abort pending requests on disposal, assembly reload, Editor exit, and entry
+  into Play mode. Connection options are copied without changing the source settings.
+- Editor scripting documentation with an owning-window example and lifecycle guidance.
+
 ## [0.2.0] - 2026-10-08
 
 ### Fixed

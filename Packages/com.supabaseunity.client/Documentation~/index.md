@@ -4,6 +4,7 @@
 - [Quickstart sample](../Samples~/Quickstart/README.md)
 - [Troubleshooting](troubleshooting.md)
 - [API guide](api.md)
+- [Editor scripting](editor-scripting.md)
 - [Platform notes](platforms.md)
 - [Session storage](session-storage.md)
 - [Security model](security.md)

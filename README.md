@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0-3ecf8e" /></a>
-  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0/com.supabaseunity.client-0.2.0.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.3.0"><img alt="Release" src="https://img.shields.io/badge/release-0.3.0-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.3.0/com.supabaseunity.client-0.3.0.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
   <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
@@ -26,9 +26,11 @@
   </strong>
 </p>
 
-> [!IMPORTANT]
-> 🚧 **Supabase for Unity is now a release candidate.** The public C# API is frozen for
-> `0.2.0`; the remaining work is final compatibility and release validation.
+> [!NOTE]
+> **0.3.0 adds HTTP clients for Editor scripts outside Play mode.** Database, Storage,
+> Functions, and explicit Auth requests are supported. See the
+> [Editor scripting guide](Packages/com.supabaseunity.client/Documentation~/editor-scripting.md)
+> for lifecycle guidance and supported operations.
 
 **Independent. Open source. Community-first.** Built with Unity developers, for Unity
 developers. Not affiliated with or endorsed by Supabase, Inc. or Unity Technologies.
@@ -51,17 +53,18 @@ This package keeps the platform plumbing out of your game code:
 
 ## ✨ Everything you need
 
-| Module | What it gives you | Status |
-| --- | --- | --- |
-| 🔑 **Auth** | Password, OTP, anonymous, OAuth/PKCE, SSO, MFA, recovery, and sessions | 🚦 RC |
-| 🗄️ **Database** | Typed queries, filters, relationships, pagination, CRUD, counts, CSV, and RPC | 🚦 RC |
-| ⚡ **Realtime** | Postgres Changes, Broadcast, Presence, reconnects, and channel rejoin | 🚦 RC |
-| 📦 **Storage** | Upload, download, progress, listing, move, copy, transforms, and signed URLs | 🚦 RC |
-| 🚀 **Functions** | Typed or raw Edge Function calls with custom requests and timeouts | 🚦 RC |
-| 🛠️ **Editor tools** | Guided setup, connection checks, credentials, and model generation | 🚦 RC |
+| Module | What it gives you |
+| --- | --- |
+| 🔑 **Auth** | Password, OTP, anonymous, OAuth/PKCE, SSO, MFA, recovery, and sessions |
+| 🗄️ **Database** | Typed queries, filters, relationships, pagination, CRUD, counts, CSV, and RPC |
+| ⚡ **Realtime** | Postgres Changes, Broadcast, Presence, reconnects, and channel rejoin |
+| 📦 **Storage** | Upload, download, progress, listing, move, copy, transforms, and signed URLs |
+| 🚀 **Functions** | Typed or raw Edge Function calls with custom requests and timeouts |
+| 🛠️ **Editor tools** | Guided setup, connection checks, model generation, and HTTP clients outside Play mode |
 
-> **What does RC mean here?** The `0.2.0` public API is frozen and protected by a compatibility
-> test. This phase is for final fixes and real-world validation before the stable release.
+The `0.2.0` runtime API remains protected by compatibility tests. See the
+[platform notes](Packages/com.supabaseunity.client/Documentation~/platforms.md) for the
+verification boundaries on each target.
 
 ---
 
@@ -75,13 +78,13 @@ In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
 **Window > Package Management > Package Manager**. Choose **Add package from git URL**, then paste:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.3.0
 ```
 
 ✅ **Done.** Newtonsoft Json.NET comes with it automatically.
 
 Prefer a file download? The
-[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0)
+[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.3.0)
 also includes:
 
 - 📦 A `.unitypackage` for **Assets > Import Package > Custom Package**.
@@ -264,6 +267,7 @@ of opening a public issue.
 - 🚀 [**Getting started**](Packages/com.supabaseunity.client/Documentation~/getting-started.md)
 - 🧭 [**Troubleshooting**](Packages/com.supabaseunity.client/Documentation~/troubleshooting.md)
 - 🧑‍💻 [**API guide**](Packages/com.supabaseunity.client/Documentation~/api.md)
+- 🛠️ [**Editor scripting**](Packages/com.supabaseunity.client/Documentation~/editor-scripting.md)
 - 📱 [**Platform notes**](Packages/com.supabaseunity.client/Documentation~/platforms.md)
 - 💾 [**Session storage**](Packages/com.supabaseunity.client/Documentation~/session-storage.md)
 - 🛡️ [**Security model**](Packages/com.supabaseunity.client/Documentation~/security.md)
