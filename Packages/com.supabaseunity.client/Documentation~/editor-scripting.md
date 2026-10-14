@@ -38,6 +38,9 @@ closes; that aborts pending requests and cancels their tasks. The package also d
 Editor clients before assembly reload, Editor exit, and entry into Play mode, including when
 domain reload is disabled. Recreate the client for a later operation.
 
+Creation is rejected during global cleanup or shutdown. A cancellation handler should wait
+for a later Editor action before creating another client.
+
 This example reads the `scores` table from the [Quickstart](../Samples~/Quickstart/README.md).
 The same pattern works for Storage and Functions calls. It creates a client for each button
 action and ignores completions belonging to a window that has closed.

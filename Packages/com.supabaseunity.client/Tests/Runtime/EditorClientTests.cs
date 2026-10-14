@@ -368,6 +368,32 @@ namespace Supabase.Unity.Tests
             }
         }
 
+        [UnityTest]
+        public IEnumerator LifecycleCleanup_RejectsReentrantClientCreation()
+        {
+            using (var release = new ManualResetEventSlim())
+            using (var fixture = BlockingFixture(release))
+            using (var client = SupabaseEditorClient.Create(Options(fixture)))
+            {
+                try
+                {
+                    var request = client.Options.HttpTransport.SendAsync(new SupabaseHttpRequest { Uri = fixture.ProjectUrl });
+                    yield return WaitForRequest(fixture);
+                    var retry = request.ContinueWith(delegate
+                    {
+                        return SupabaseEditorClient.Create(EditorOptions());
+                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                    SupabaseEditorClient.DisposeAll();
+                    yield return Wait(retry);
+                    // Clean up an escaped client before reporting a failing regression.
+                    if (retry.Status == TaskStatus.RanToCompletion) retry.Result.Dispose();
+                    Assert.IsTrue(retry.IsFaulted, "A cancellation callback created a client during global cleanup.");
+                    Assert.IsInstanceOf<InvalidOperationException>(retry.Exception.GetBaseException());
+                }
+                finally { release.Set(); }
+            }
+        }
+
         private static IEnumerator CheckLifecycleCleanup(Action<SupabaseClient> cleanup)
         {
             var count = SupabaseEditorClient.ActiveClientCount;

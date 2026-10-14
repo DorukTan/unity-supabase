@@ -12,13 +12,15 @@ namespace Supabase.Unity.Editor
         private static readonly int MainThreadId = Thread.CurrentThread.ManagedThreadId;
         private static readonly Dictionary<SupabaseClient, EditorHttpTransport> Clients
             = new Dictionary<SupabaseClient, EditorHttpTransport>();
+        private static bool disposingAll;
+        private static bool shuttingDown;
 
         internal static int ActiveClientCount { get { return Clients.Count; } }
 
         static SupabaseEditorClient()
         {
-            AssemblyReloadEvents.beforeAssemblyReload += DisposeAll;
-            EditorApplication.quitting += DisposeAll;
+            AssemblyReloadEvents.beforeAssemblyReload += Shutdown;
+            EditorApplication.quitting += Shutdown;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
@@ -111,6 +113,8 @@ namespace Supabase.Unity.Editor
         {
             if (Thread.CurrentThread.ManagedThreadId != MainThreadId)
                 throw new InvalidOperationException("Create Editor clients on Unity's main thread.");
+            if (disposingAll || shuttingDown)
+                throw new InvalidOperationException("Editor clients cannot be created during lifecycle cleanup.");
             if (EditorApplication.isPlayingOrWillChangePlaymode)
                 throw new InvalidOperationException("Editor clients can only be created outside Play mode.");
         }
@@ -122,16 +126,28 @@ namespace Supabase.Unity.Editor
 
         internal static void DisposeAll()
         {
-            foreach (var pair in new Dictionary<SupabaseClient, EditorHttpTransport>(Clients))
+            if (disposingAll) return;
+            disposingAll = true;
+            try
             {
-                try { pair.Key.Dispose(); }
-                catch (Exception exception) { UnityEngine.Debug.LogException(exception); }
-                finally
+                foreach (var pair in new Dictionary<SupabaseClient, EditorHttpTransport>(Clients))
                 {
-                    pair.Value.Dispose();
-                    OnClientDisposed(pair.Key);
+                    try { pair.Key.Dispose(); }
+                    catch (Exception exception) { UnityEngine.Debug.LogException(exception); }
+                    finally
+                    {
+                        pair.Value.Dispose();
+                        OnClientDisposed(pair.Key);
+                    }
                 }
             }
+            finally { disposingAll = false; }
+        }
+
+        private static void Shutdown()
+        {
+            shuttingDown = true;
+            DisposeAll();
         }
 
         private sealed class EditorAuthCallbackProvider : IAuthCallbackProvider
