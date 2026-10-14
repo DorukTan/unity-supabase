@@ -13,6 +13,8 @@ var ready = await client.InitializeAsync();
 
 `InitializeAsync` restores Auth state and, when enabled in settings, opens Realtime. Dispose the client when its owning game subsystem is destroyed.
 
+For Editor scripts outside Play mode, use the [Editor client factory](editor-scripting.md).
+
 `SupabaseClientOptions.RealtimeHeartbeatInterval` defaults to 25 seconds and must be greater
 than zero. Invalid intervals throw `SupabaseConfigurationException` when the client is created.
 
@@ -195,10 +197,10 @@ For IL2CPP builds, model members used only through reflection must be preserved.
 
 ## API stability
 
-`0.2.0-rc.1` freezes the public C# surface for `0.2.0`. Later release candidates and the final
-`0.2.0` release may add members, but they will not remove, rename, or change existing public
-signatures. A compatibility test records the approved types, members, enum values, optional
-defaults, generic constraints, and declared interfaces.
+`0.3.0` preserves the runtime API published in `0.2.0`. A compatibility test records the
+approved types, members, enum values, optional defaults, generic constraints, and declared
+interfaces. The Editor client factory lives in the separate Editor assembly and does not
+change the player API.
 
 The project is still pre-1.0. A future `0.x` minor release may contain documented breaking
 changes, while patch releases remain backward compatible.

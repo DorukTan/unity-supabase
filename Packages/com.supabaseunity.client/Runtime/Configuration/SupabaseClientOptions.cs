@@ -93,6 +93,10 @@ namespace Supabase.Unity
         // Test seam for recovery timing. Production uses the runtime host delay.
         internal Func<TimeSpan, CancellationToken, Task> RealtimeRecoveryDelay { get; set; }
 
+        // Editor clients deliver notifications without creating the player runtime host.
+        internal Action<Action> AuthStateDispatcher { get; set; }
+        internal bool DisableAutomaticAuthRefresh { get; set; }
+
         public SupabaseResolvedEndpoints ValidateAndResolve()
         {
             ProjectUrl = string.IsNullOrWhiteSpace(ProjectUrl) ? ProjectUrl : ProjectUrl.Trim();

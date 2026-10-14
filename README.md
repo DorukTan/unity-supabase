@@ -2,312 +2,226 @@
   <img src=".github/assets/supabase-unity-banner.png" alt="Supabase for Unity" width="100%" />
 </p>
 
-<h1 align="center">Supabase for Unity</h1>
+# Supabase for Unity
+
+An independent Supabase client for Unity 2021.3 and newer, with Auth, Database, Realtime,
+Storage, and Edge Functions APIs for WebGL, desktop, and mobile projects.
 
 <p align="center">
-  🎮 <strong>Auth, Database, Realtime, Storage, and Edge Functions for Unity.</strong><br />
-  🌐 One package for WebGL, desktop, and mobile.
-</p>
-
-<p align="center">
-  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0"><img alt="Release" src="https://img.shields.io/badge/release-0.2.0-3ecf8e" /></a>
-  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.2.0/com.supabaseunity.client-0.2.0.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/tag/v0.3.0"><img alt="Release" src="https://img.shields.io/badge/release-0.3.0-3ecf8e" /></a>
+  <a href="https://github.com/DorukTan/unity-supabase/releases/download/v0.3.0/com.supabaseunity.client-0.3.0.unitypackage"><img alt="Download unitypackage" src="https://img.shields.io/badge/download-.unitypackage-3ecf8e?logo=unity&amp;logoColor=white" /></a>
   <a href="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml"><img alt="Package checks" src="https://github.com/DorukTan/unity-supabase/actions/workflows/package-checks.yml/badge.svg" /></a>
   <img alt="Unity" src="https://img.shields.io/badge/Unity-2021.3%20to%206-222222?logo=unity" />
   <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue" /></a>
 </p>
 
-<p align="center">
-  <strong>
-    <a href="#-get-started-in-5-minutes">🚀 Get started</a> ·
-    <a href="Packages/com.supabaseunity.client/Documentation~/index.md">📚 Documentation</a> ·
-    <a href="Packages/com.supabaseunity.client/CHANGELOG.md">📝 Changelog</a> ·
-    <a href="CONTRIBUTING.md">🤝 Contributing</a>
-  </strong>
-</p>
+Version **0.3.0** adds HTTP clients for Editor scripts outside Play mode while preserving
+the 0.2.0 runtime API. See the [Editor scripting guide](Packages/com.supabaseunity.client/Documentation~/editor-scripting.md)
+for supported operations and lifetime requirements.
 
-> [!IMPORTANT]
-> 🚧 **Supabase for Unity is now a release candidate.** The public C# API is frozen for
-> `0.2.0`; the remaining work is final compatibility and release validation.
-
-**Independent. Open source. Community-first.** Built with Unity developers, for Unity
-developers. Not affiliated with or endorsed by Supabase, Inc. or Unity Technologies.
-
----
-
-## 🎮 Why Supabase for Unity?
-
-Supabase is a great game backend. Unity just needs a client built around **Unity's runtime**,
-not a general-purpose .NET environment.
-
-This package keeps the platform plumbing out of your game code:
-
-- 🌍 **Runs across platforms** — WebGL, desktop, and mobile.
-- 🧰 **Feels at home in Unity** — `UnityWebRequest`, async APIs, and a coroutine bridge.
-- 🔌 **Uses the right transport** — browser bridges on WebGL, native WebSockets elsewhere.
-- 🪶 **Stays lightweight** — no dependency on `supabase-csharp` or another general-purpose .NET SDK.
-
----
-
-## ✨ Everything you need
-
-| Module | What it gives you | Status |
-| --- | --- | --- |
-| 🔑 **Auth** | Password, OTP, anonymous, OAuth/PKCE, SSO, MFA, recovery, and sessions | 🚦 RC |
-| 🗄️ **Database** | Typed queries, filters, relationships, pagination, CRUD, counts, CSV, and RPC | 🚦 RC |
-| ⚡ **Realtime** | Postgres Changes, Broadcast, Presence, reconnects, and channel rejoin | 🚦 RC |
-| 📦 **Storage** | Upload, download, progress, listing, move, copy, transforms, and signed URLs | 🚦 RC |
-| 🚀 **Functions** | Typed or raw Edge Function calls with custom requests and timeouts | 🚦 RC |
-| 🛠️ **Editor tools** | Guided setup, connection checks, credentials, and model generation | 🚦 RC |
-
-> **What does RC mean here?** The `0.2.0` public API is frozen and protected by a compatibility
-> test. This phase is for final fixes and real-world validation before the stable release.
-
----
-
-## 🚀 Get started in 5 minutes
-
-**You need:** Unity 2021.3+ and a Supabase project.
-
-### 1️⃣ Install the package
+## Installation
 
 In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
-**Window > Package Management > Package Manager**. Choose **Add package from git URL**, then paste:
+**Window > Package Management > Package Manager**. Select **Add package from git URL**:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.3.0
 ```
 
-✅ **Done.** Newtonsoft Json.NET comes with it automatically.
+UPM installs the Newtonsoft Json.NET dependency automatically. The
+[release page](https://github.com/DorukTan/unity-supabase/releases/tag/v0.3.0) also provides:
 
-Prefer a file download? The
-[latest release](https://github.com/DorukTan/unity-supabase/releases/tag/v0.2.0)
-also includes:
+- A `.tgz` for **Package Manager > Add package from tarball**.
+- A `.unitypackage` for **Assets > Import Package > Custom Package**. Install
+  `com.unity.nuget.newtonsoft-json` 3.2.1 or newer first.
 
-- 📦 A `.unitypackage` for **Assets > Import Package > Custom Package**.
-- 📦 A `.tgz` for **Package Manager > Add package from tarball**.
+Choose one distribution; installing both creates duplicate assemblies.
 
-Install `com.unity.nuget.newtonsoft-json` first when using the `.unitypackage`. Do not install
-both distributions in the same project; they contain the same assemblies.
+## Configuration
 
-The UPM installation exposes **Quickstart** in Package Manager's **Samples** tab. The
-`.unitypackage` includes the same sample under `Assets/SupabaseUnity/Samples/Quickstart`.
+Open **Tools > Supabase > Setup**, create or select a settings asset, then enter the Project
+URL and publishable key from the Supabase Dashboard **Connect** dialog. Legacy `anon` keys
+are also accepted. The default Data API schema is `public`.
 
-### 2️⃣ Run the setup assistant
+Click **Test Project Connection** to check the URL, key, and network path against Supabase
+Auth. It does not test database grants, RLS, or Storage policies. Assign the settings asset
+to the component that initializes the client.
 
-Open **Tools > Supabase > Setup**, create a settings asset, then enter:
+A Unity player is a public client. Never ship an `sb_secret_...` key, `service_role` key,
+database password, or management token. Use Row Level Security, Storage policies, and
+server-side authorization to control access.
 
-1. 🌐 **Project URL**
-2. 🔑 **Publishable key** (`sb_publishable_...`) or legacy `anon` key
-3. 🗂️ **Data API schema** — normally `public`
+## Example
 
-Click **Test Project Connection**. It checks the URL, publishable key, and network path without
-testing or changing your database policies. Assign the settings asset to the component that starts
-your Supabase client.
-
-> [!CAUTION]
-> 🔐 **A Unity build is a public client.** Never include an `sb_secret_...` key, `service_role`
-> key, database password, or management token in your project. Use Row Level Security and
-> Storage policies to control what players can access.
-
-### 3️⃣ Make your first query
+This component reads the `scores` table created by the
+[Quickstart SQL](Packages/com.supabaseunity.client/Samples~/Quickstart/setup.sql).
+Save it as `Leaderboard.cs`, attach it to a GameObject, and assign the settings asset.
 
 ```csharp
 using System;
+using System.Threading;
 using Supabase.Unity;
 using UnityEngine;
 
 public sealed class Leaderboard : MonoBehaviour
 {
     [SerializeField] private SupabaseSettings settings;
-    private SupabaseClient supabase;
+    private SupabaseClient client;
+    private CancellationTokenSource lifetime;
 
     private async void Start()
     {
-        supabase = new SupabaseClient(settings);
-
-        var initialized = await supabase.InitializeAsync();
-        if (!initialized.IsSuccess)
+        if (settings == null)
         {
-            Debug.LogError(initialized.Error);
+            Debug.LogError("Assign a SupabaseSettings asset.", this);
             return;
         }
 
-        var scores = await supabase.From<ScoreRow>()
-            .Select("id,player_name,score")
-            .Order("score", ascending: false)
-            .Limit(10)
-            .GetAsync();
+        lifetime = new CancellationTokenSource();
+        var token = lifetime.Token;
+        try
+        {
+            client = new SupabaseClient(settings);
+            var initialized = await client.InitializeAsync(token);
+            token.ThrowIfCancellationRequested();
+            if (!initialized.IsSuccess)
+            {
+                Debug.LogError(initialized.Error, this);
+                return;
+            }
 
-        if (scores.IsSuccess)
-            Debug.Log($"Loaded {scores.Data.Count} scores.");
-        else
-            Debug.LogError(scores.Error);
+            var scores = await client.From<ScoreRow>()
+                .Select("id,player_name,score")
+                .Order("score", ascending: false)
+                .Limit(10)
+                .GetAsync(token);
+            token.ThrowIfCancellationRequested();
+            if (scores.IsSuccess)
+                Debug.Log("Loaded " + scores.Data.Count + " scores.", this);
+            else
+                Debug.LogError(scores.Error, this);
+        }
+        catch (OperationCanceledException)
+        {
+            // The component's lifetime ended.
+        }
+        catch (SupabaseConfigurationException exception)
+        {
+            Debug.LogError(exception.Message, this);
+        }
     }
 
     private void OnDestroy()
     {
-        supabase?.Dispose();
+        if (lifetime != null) lifetime.Cancel();
+        if (client != null) client.Dispose();
+        if (lifetime != null) lifetime.Dispose();
     }
 }
 
 [Serializable, SupabaseTable("scores")]
 public sealed class ScoreRow
 {
-    [SupabaseColumn("id")]
-    public long Id { get; set; }
-
-    [SupabaseColumn("player_name")]
-    public string PlayerName { get; set; }
-
-    [SupabaseColumn("score")]
-    public int Score { get; set; }
+    [SupabaseColumn("id")] public long Id { get; set; }
+    [SupabaseColumn("player_name")] public string PlayerName { get; set; }
+    [SupabaseColumn("score")] public int Score { get; set; }
 }
 ```
 
-> [!TIP]
-> ✅ Every network call returns `SupabaseResult` or `SupabaseResult<T>`. Check `IsSuccess`,
-> then read `Data` or `Error`. Cancellation still throws `OperationCanceledException`.
+Network methods return `SupabaseResult` or `SupabaseResult<T>`. Check `IsSuccess` before
+reading `Data` or `Error`; cancellation throws `OperationCanceledException`. Use `await` or
+the coroutine bridge. Blocking with `.Result`, `.Wait()`, or `.GetAwaiter().GetResult()` can
+freeze Unity because requests need the main thread to advance.
 
-> [!WARNING]
-> 🧊 **Keep network code asynchronous.** Calling `.Result` or `.GetAwaiter().GetResult()` can
-> freeze Unity because the transport needs the main thread to continue running.
+For a Database and Realtime example, import **Quickstart** from Package Manager's **Samples**
+tab. The `.unitypackage` includes it under `Assets/SupabaseUnity/Samples/Quickstart`.
 
-🎁 **Want something runnable?** Import **Quickstart** from Package Manager when using UPM, or open
-the copy included with the `.unitypackage`. It contains the required SQL, a Database query, a
-Realtime subscription, and exact steps from import to Play.
+## Services and Editor tools
 
----
+| Area | Features |
+| --- | --- |
+| Auth | Password, OTP, anonymous sign-in, OAuth/PKCE, SSO, MFA, recovery, and sessions |
+| Database | Typed PostgREST queries, filters, relationships, pagination, CRUD, counts, CSV, and RPC |
+| Realtime | Postgres Changes, Broadcast, Presence, heartbeat, reconnect, and channel rejoin |
+| Storage | Upload, download, progress, listing, move, copy, transforms, and signed URLs |
+| Functions | Typed and raw Edge Function calls with custom requests and timeouts |
+| Editor tools | Setup Assistant, connection checks, model generation, and explicit HTTP clients outside Play mode |
 
-## 🧩 One client. Five services.
-
-Create one `SupabaseClient`, then use the service you need:
-
-```csharp
-supabase.Auth;                    // Sign-in, sessions, OAuth, and MFA
-supabase.From<ScoreRow>();        // Typed database queries
-supabase.Realtime.Channel("game"); // Postgres Changes, Broadcast, and Presence
-supabase.Storage.From("avatars");  // Files and image transforms
-supabase.Functions;               // Edge Functions
-```
-
-**That is the whole mental model.** For complete examples, see the
-[API guide](Packages/com.supabaseunity.client/Documentation~/api.md).
-
----
+Editor HTTP clients use memory-only session and PKCE stores. They do not support Realtime,
+automatic token refresh, or automatic browser authentication. The Model Generator uses an
+Editor-only secret for its schema request; that secret is never saved to settings or models.
 
 <a id="platform-support"></a>
 
-## 🖥️ Platform support
+## Verification and platform boundaries
 
-**Supported** = built and run. **Untested** = compiles, but still needs a real-world report.
+The local verification for 0.3.0 covers the following boundaries. A successful build
+does not establish live service behavior on a device.
 
-| Target | Status | Last checked by |
-| --- | --- | --- |
-| Unity 6 (6000.4.8f1) Editor | ✅ Supported | Maintainer |
-| Unity 2022.3 LTS Editor | ✅ Supported | Maintainer |
-| Unity 2021.3 LTS Editor | ✅ Supported | Maintainer |
-| WebGL | ✅ Supported | Maintainer |
-| Windows player | ✅ Supported | Maintainer |
-| macOS player | ✅ Supported | Maintainer |
-| Android | ✅ Supported | Maintainer |
-| iOS | ✅ Supported | Maintainer |
-| Linux player | ❓ Untested | Community report wanted |
-| Consoles | ❌ Unsupported | — |
+| Target | Recorded verification |
+| --- | --- |
+| Unity 2021.3.45f2 Editor | EditMode suite and documentation example compilation |
+| Unity 2022.3.62f2 Editor | EditMode suite and documentation example compilation |
+| Unity 6000.4.8f1 Editor | EditMode suite and clean `.unitypackage` import/compilation |
+| WebGL | Smoke player build from the clean package import |
+| Windows | Smoke player build from the clean package import |
+| Android | Smoke player build from the clean package import |
+| iOS | Unity Xcode project export; Xcode compilation, signing, and hardware execution remain separate |
+| macOS and Linux players | Not verified by the current release gate |
+| Consoles | Unsupported |
 
-### ✅ Release checks
+The package uses `UnityWebRequest` for HTTP, browser WebSockets on WebGL, and native
+WebSockets elsewhere. See [platform notes](Packages/com.supabaseunity.client/Documentation~/platforms.md)
+for networking and platform constraints.
 
-- **License-free hosted checks** for credentials, GUIDs, versions, workflows, WebGL plugin
-  syntax, and deterministic release archives.
-- **A locally activated Unity release gate** for the complete EditMode suite, clean
-  `.unitypackage` import, WebGL, Windows, and Android smoke builds, and iOS Xcode project
-  generation.
-- **New tagged releases include a public verification record** whose archive hashes must match
-  the files rebuilt from the release tag before GitHub publishes them.
+GitHub Actions checks package structure, credentials, versions, metadata, WebGL plugin
+syntax, and deterministic archives. It does not run Unity. The local release gate runs
+the Unity suite, clean import, and platform builds. Tagged release archives must match the
+hashes in the attached verification record. See [RELEASING.md](RELEASING.md).
 
-The hosted badge reports package integrity only; it does not claim that Unity ran in GitHub
-Actions. See [RELEASING.md](RELEASING.md) for the complete release boundary.
+To report live testing, open a
+[platform report](https://github.com/DorukTan/unity-supabase/issues/new?template=platform_report.yml)
+with the package/Unity version, OS or device, exercised services, and sanitized results.
 
-📣 **Shipped a build?** Please file a
-[platform report](https://github.com/DorukTan/unity-supabase/issues/new?template=platform_report.yml).
-Reports from older OS versions, unusual devices, and aggressive stripping setups are gold.
+## Security and session storage
 
----
+Elevated client keys are rejected, credentialed requests do not follow redirects, and
+SDK errors redact keys and tokens. These safeguards do not replace your application's
+database grants, RLS, Storage policies, or Edge Function authorization.
 
-## 🔐 Security by default
-
-The package makes common credential mistakes harder:
-
-- 🚫 **Elevated keys are rejected** in settings, headers, sessions, and player builds.
-- 🔒 **HTTPS and WSS are required** outside local development.
-- 🧼 **Tokens and keys are scrubbed** from SDK error messages.
-- ↪️ **Credentialed redirects are disabled.**
-- 🌐 **WebGL OAuth credentials are removed** from the URL after processing.
-
-> [!WARNING]
-> 🛡️ These protections do not replace database grants, Row Level Security, Storage policies,
-> or Edge Function authorization. Those are still part of your application.
-
-💾 **Session persistence is off by default.** Before enabling it, read the
+Session persistence is off by default. Read the
 [session storage guide](Packages/com.supabaseunity.client/Documentation~/session-storage.md)
-and understand how refresh tokens are stored on each platform.
+before enabling it. Native file persistence is unencrypted; use a custom `ISessionStore`
+when your application requires operating-system credential protection.
 
-🐛 **Found a vulnerability?** Read the
-[security guide](Packages/com.supabaseunity.client/Documentation~/security.md), then use
-[private reporting](https://github.com/DorukTan/unity-supabase/security/advisories/new) instead
-of opening a public issue.
+Report vulnerabilities through [private reporting](https://github.com/DorukTan/unity-supabase/security/advisories/new).
+Do not include credentials in issues or logs.
 
----
+## Documentation
 
-## 📚 Pick a guide
+- [Getting started](Packages/com.supabaseunity.client/Documentation~/getting-started.md)
+- [API guide](Packages/com.supabaseunity.client/Documentation~/api.md)
+- [Editor scripting](Packages/com.supabaseunity.client/Documentation~/editor-scripting.md)
+- [Troubleshooting](Packages/com.supabaseunity.client/Documentation~/troubleshooting.md)
+- [Platform notes](Packages/com.supabaseunity.client/Documentation~/platforms.md)
+- [Session storage](Packages/com.supabaseunity.client/Documentation~/session-storage.md)
+- [Security model](Packages/com.supabaseunity.client/Documentation~/security.md)
+- [Migration guide](Packages/com.supabaseunity.client/Documentation~/migration-0.2.md)
+- [Turkish quick start](Packages/com.supabaseunity.client/README.tr.md)
+- [Changelog](Packages/com.supabaseunity.client/CHANGELOG.md)
 
-- 🚀 [**Getting started**](Packages/com.supabaseunity.client/Documentation~/getting-started.md)
-- 🧭 [**Troubleshooting**](Packages/com.supabaseunity.client/Documentation~/troubleshooting.md)
-- 🧑‍💻 [**API guide**](Packages/com.supabaseunity.client/Documentation~/api.md)
-- 📱 [**Platform notes**](Packages/com.supabaseunity.client/Documentation~/platforms.md)
-- 💾 [**Session storage**](Packages/com.supabaseunity.client/Documentation~/session-storage.md)
-- 🛡️ [**Security model**](Packages/com.supabaseunity.client/Documentation~/security.md)
-- 🔀 [**Migrating to 0.2**](Packages/com.supabaseunity.client/Documentation~/migration-0.2.md)
-- 💬 [**Support policy**](SUPPORT.md)
-- 🇹🇷 [**Türkçe hızlı başlangıç**](Packages/com.supabaseunity.client/README.tr.md)
-- 📝 [**Changelog**](Packages/com.supabaseunity.client/CHANGELOG.md)
+## Contributing and support
 
----
+Bug reproductions, documentation fixes, platform reports, and focused pull requests are
+welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SUPPORT.md](SUPPORT.md) before opening
+an issue or proposing a large change. This is a single-maintainer project with best-effort
+support and no SLA.
 
-## 🤝 Built with the community
+## License and trademarks
 
-Maintained by one developer in their spare time — strengthened by everyone who tests it,
-reports problems, improves the docs, and contributes fixes.
+[MIT licensed](LICENSE.md). The package has no paid tier, usage fees, telemetry, or hosted
+component. Supabase hosting and third-party services have their own terms and pricing.
 
-**You do not need to build a huge feature to help:**
-
-- 🖥️ **Share a platform report.**
-- 🐛 **Create a small bug reproduction.**
-- ✍️ **Fix confusing docs or add an example.**
-- 📱 **Test on hardware the maintainer does not own.**
-- 🔧 **Open a focused pull request.**
-
-💬 Start with [**CONTRIBUTING.md**](CONTRIBUTING.md). Use
-[**GitHub issues**](https://github.com/DorukTan/unity-supabase/issues) for support so every
-answer remains searchable for the next developer.
-
----
-
-## 💚 Free and open source
-
-- 💰 **Use it in commercial games.**
-- 🏠 **Connect it to self-hosted Supabase.**
-- 🔧 **Fork it and make it yours.**
-- 🚫 **The SDK has no paid tier, usage fees, telemetry, or hosted component.**
-
-**MIT licensed. The code you install is the product.**
-
----
-
-## 📄 License & trademarks
-
-Licensed under the [MIT License](LICENSE.md).
-
-Supabase and the Supabase logo are trademarks of Supabase, Inc. Unity and the Unity logo are
-trademarks or registered trademarks of Unity Technologies. Their appearance identifies
-compatibility only and does not imply sponsorship or endorsement.
+This project is not affiliated with or endorsed by Supabase, Inc. or Unity Technologies.
+Supabase and Unity names and logos identify compatibility; they remain the property of
+their respective owners.

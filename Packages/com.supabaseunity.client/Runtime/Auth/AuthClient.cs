@@ -59,7 +59,8 @@ namespace Supabase.Unity
             pkceKey = sessionKey + ".pkce";
             if (callbackProvider != null)
                 callbackProvider.CallbackReceived += OnCallbackReceived;
-            SupabaseRuntimeHost.FocusChanged += OnFocusChanged;
+            if (!options.DisableAutomaticAuthRefresh)
+                SupabaseRuntimeHost.FocusChanged += OnFocusChanged;
         }
 
         public async Task<SupabaseResult<AuthSession>> InitializeAsync(
@@ -946,7 +947,7 @@ namespace Supabase.Unity
                 schedule = EnqueueStateChangedLocked(changeEvent, CurrentSession);
             }
             if (schedule)
-                SupabaseRuntimeHost.Post(DrainStateNotifications);
+                DispatchStateNotifications();
             return true;
         }
 
@@ -960,7 +961,7 @@ namespace Supabase.Unity
                 schedule = EnqueueStateChangedLocked(changeEvent, expectedSession);
             }
             if (schedule)
-                SupabaseRuntimeHost.Post(DrainStateNotifications);
+                DispatchStateNotifications();
             return true;
         }
 
@@ -970,6 +971,14 @@ namespace Supabase.Unity
             lock (sessionGate)
                 schedule = EnqueueStateChangedLocked(changeEvent, CurrentSession);
             if (schedule)
+                DispatchStateNotifications();
+        }
+
+        private void DispatchStateNotifications()
+        {
+            if (options.AuthStateDispatcher != null)
+                options.AuthStateDispatcher(DrainStateNotifications);
+            else
                 SupabaseRuntimeHost.Post(DrainStateNotifications);
         }
 
@@ -1099,7 +1108,7 @@ namespace Supabase.Unity
 
         private void StartAutoRefresh()
         {
-            if (!options.AutoRefreshToken || refreshLoopCancellation != null)
+            if (options.DisableAutomaticAuthRefresh || !options.AutoRefreshToken || refreshLoopCancellation != null)
                 return;
             refreshLoopCancellation = new CancellationTokenSource();
             AutoRefreshLoopAsync(refreshLoopCancellation.Token);

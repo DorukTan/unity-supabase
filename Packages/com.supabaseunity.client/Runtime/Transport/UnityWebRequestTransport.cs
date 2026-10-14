@@ -93,19 +93,7 @@ namespace Supabase.Unity
                     yield break;
                 }
 
-                var response = new SupabaseHttpResponse
-                {
-                    StatusCode = (int)unityRequest.responseCode,
-                    Headers = unityRequest.GetResponseHeaders()
-                        ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                    TransportError = HasTransportError(unityRequest) ? unityRequest.error : null,
-                    TimedOut = string.Equals(unityRequest.error, "Request timeout", StringComparison.OrdinalIgnoreCase)
-                };
-
-                var chunks = unityRequest.downloadHandler as ChunkDownloadHandler;
-                response.Body = chunks != null
-                    ? chunks.Bytes
-                    : (unityRequest.downloadHandler == null ? new byte[0] : unityRequest.downloadHandler.data);
+                var response = ReadResponse(unityRequest);
 
                 if (request.UploadProgress != null)
                     request.UploadProgress.Report(1f);
@@ -115,34 +103,57 @@ namespace Supabase.Unity
             }
         }
 
-        private static UnityWebRequest CreateRequest(SupabaseHttpRequest request)
+        internal static SupabaseHttpResponse ReadResponse(UnityWebRequest request)
+        {
+            var chunks = request.downloadHandler as ChunkDownloadHandler;
+            return new SupabaseHttpResponse
+            {
+                StatusCode = (int)request.responseCode,
+                Headers = request.GetResponseHeaders()
+                    ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                TransportError = HasTransportError(request) ? request.error : null,
+                TimedOut = string.Equals(request.error, "Request timeout", StringComparison.OrdinalIgnoreCase),
+                Body = chunks != null ? chunks.Bytes
+                    : (request.downloadHandler == null ? new byte[0] : request.downloadHandler.data)
+            };
+        }
+
+        internal static UnityWebRequest CreateRequest(SupabaseHttpRequest request)
         {
             var method = ToUnityMethod(request.Method);
             var unityRequest = new UnityWebRequest(request.Uri, method);
-            unityRequest.timeout = Math.Max(1, (int)Math.Ceiling(request.Timeout.TotalSeconds));
-            // Supabase API endpoints should respond directly. Following a cross-origin redirect could
-            // forward apikey/Authorization headers to a host the caller did not configure.
-            unityRequest.redirectLimit = 0;
-
-            if (request.Body != null)
-                unityRequest.uploadHandler = new UploadHandlerRaw(request.Body);
-
-            unityRequest.downloadHandler = request.DownloadChunk == null
-                ? (DownloadHandler)new DownloadHandlerBuffer()
-                : new ChunkDownloadHandler(request.DownloadChunk);
-
-            if (!string.IsNullOrWhiteSpace(request.ContentType))
-                unityRequest.SetRequestHeader("Content-Type", request.ContentType);
-
-            foreach (var header in request.Headers)
+            try
             {
-                if (string.Equals(header.Key, "Content-Type", StringComparison.OrdinalIgnoreCase))
-                    unityRequest.SetRequestHeader("Content-Type", header.Value);
-                else
-                    unityRequest.SetRequestHeader(header.Key, header.Value);
-            }
+                unityRequest.timeout = Math.Max(1, (int)Math.Ceiling(request.Timeout.TotalSeconds));
+                // Supabase API endpoints should respond directly. Following a cross-origin redirect could
+                // forward apikey/Authorization headers to a host the caller did not configure.
+                unityRequest.redirectLimit = 0;
 
-            return unityRequest;
+                if (request.Body != null)
+                    unityRequest.uploadHandler = new UploadHandlerRaw(request.Body);
+
+                unityRequest.downloadHandler = request.DownloadChunk == null
+                    ? (DownloadHandler)new DownloadHandlerBuffer()
+                    : new ChunkDownloadHandler(request.DownloadChunk);
+
+                if (!string.IsNullOrWhiteSpace(request.ContentType))
+                    unityRequest.SetRequestHeader("Content-Type", request.ContentType);
+
+                foreach (var header in request.Headers)
+                {
+                    if (string.Equals(header.Key, "Content-Type", StringComparison.OrdinalIgnoreCase))
+                        unityRequest.SetRequestHeader("Content-Type", header.Value);
+                    else
+                        unityRequest.SetRequestHeader(header.Key, header.Value);
+                }
+
+                return unityRequest;
+            }
+            catch
+            {
+                unityRequest.Dispose();
+                throw;
+            }
         }
 
         private static string ToUnityMethod(SupabaseHttpMethod method)

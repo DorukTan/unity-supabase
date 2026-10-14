@@ -3,8 +3,8 @@
 An independent Supabase client for Unity 2021.3 and newer. The package provides Auth,
 Database, Realtime, Storage and Edge Functions APIs for WebGL, desktop and mobile projects.
 
-> The package is a release candidate. Its public C# API is frozen for `0.2.0`; review the
-> [changelog](CHANGELOG.md) before upgrading.
+> `0.3.0` adds [Editor scripting](Documentation~/editor-scripting.md) while preserving the
+> `0.2.0` runtime API. Review the [changelog](CHANGELOG.md) before upgrading.
 
 ## Installation
 
@@ -12,7 +12,7 @@ In Unity 2021.3 or 2022.3, open **Window > Package Manager**. In Unity 6, open
 **Window > Package Management > Package Manager**. Select **Add package from git URL**, then enter:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.3.0
 ```
 
 Release tarballs and `.unitypackage` files are available on the
@@ -37,37 +37,78 @@ Security, Storage policies and server-side authorization.
 
 ## Example
 
+Save this component as `Leaderboard.cs`, attach it to a GameObject, and assign settings.
+Create its `scores` table with the [Quickstart SQL](Samples~/Quickstart/setup.sql).
+
 ```csharp
 using System;
+using System.Threading;
 using Supabase.Unity;
+using UnityEngine;
 
-[Serializable, SupabaseTable("cities")]
-public sealed class City
+public sealed class Leaderboard : MonoBehaviour
 {
-    [SupabaseColumn("id")]
-    public long Id { get; set; }
+    [SerializeField] private SupabaseSettings settings;
+    private SupabaseClient client;
+    private CancellationTokenSource lifetime;
 
-    [SupabaseColumn("name")]
-    public string Name { get; set; }
+    private async void Start()
+    {
+        if (settings == null)
+        {
+            Debug.LogError("Assign a SupabaseSettings asset.", this);
+            return;
+        }
+
+        lifetime = new CancellationTokenSource();
+        var token = lifetime.Token;
+        try
+        {
+            client = new SupabaseClient(settings);
+            var initialized = await client.InitializeAsync(token);
+            token.ThrowIfCancellationRequested();
+            if (!initialized.IsSuccess)
+            {
+                Debug.LogError(initialized.Error, this);
+                return;
+            }
+
+            var scores = await client.From<ScoreRow>()
+                .Select("id,player_name,score")
+                .Order("score", ascending: false)
+                .Limit(10)
+                .GetAsync(token);
+            token.ThrowIfCancellationRequested();
+            if (scores.IsSuccess)
+                Debug.Log("Loaded " + scores.Data.Count + " scores.", this);
+            else
+                Debug.LogError(scores.Error, this);
+        }
+        catch (OperationCanceledException)
+        {
+            // The component's lifetime ended.
+        }
+        catch (SupabaseConfigurationException exception)
+        {
+            Debug.LogError(exception.Message, this);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (lifetime != null) lifetime.Cancel();
+        if (client != null) client.Dispose();
+        if (lifetime != null) lifetime.Dispose();
+    }
 }
 
-var client = new SupabaseClient(settings);
-var initialized = await client.InitializeAsync();
-
-if (!initialized.IsSuccess)
+[Serializable, SupabaseTable("scores")]
+public sealed class ScoreRow
 {
-    UnityEngine.Debug.LogError(initialized.Error);
-    return;
+    [SupabaseColumn("id")] public long Id { get; set; }
+    [SupabaseColumn("player_name")] public string PlayerName { get; set; }
+    [SupabaseColumn("score")] public int Score { get; set; }
 }
-
-var cities = await client.From<City>()
-    .Select("id,name")
-    .Order("name")
-    .Limit(50)
-    .GetAsync();
-
-if (!cities.IsSuccess)
-    UnityEngine.Debug.LogError(cities.Error);
 ```
 
 Network operations return `SupabaseResult` or `SupabaseResult<T>`. Check `IsSuccess` before
@@ -94,6 +135,7 @@ thread. Use `await` or the provided coroutine bridge.
 - [Quickstart sample](Samples~/Quickstart/README.md)
 - [Troubleshooting](Documentation~/troubleshooting.md)
 - [API guide](Documentation~/api.md)
+- [Editor scripting](Documentation~/editor-scripting.md)
 - [Platform notes](Documentation~/platforms.md)
 - [Session storage](Documentation~/session-storage.md)
 - [Security model](Documentation~/security.md)

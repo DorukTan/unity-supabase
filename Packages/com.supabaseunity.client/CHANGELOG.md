@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-14
+
+### Added
+
+- `SupabaseEditorClient.Create` supports explicit HTTP operations outside Play mode through
+  an Editor update-driven transport. Clients use memory-only Auth/PKCE stores and manual
+  session refresh; Realtime and automatic browser authentication remain unsupported.
+- Editor clients abort pending requests on disposal, assembly reload, Editor exit, and entry
+  into Play mode. Connection options are copied without changing the source settings.
+- Editor scripting documentation with an owning-window example and lifecycle guidance.
+
+### Fixed
+
+- Setup Assistant connection results are invalidated when the settings change, and results
+  from an older configuration are discarded.
+- Model generation cancels when its window closes or Play mode changes. Output settings
+  are captured before the request, and an active operation can be cancelled from the window.
+
+### Changed
+
+- The Model Generator uses a scrollable layout and a minimum window size, with wrapping
+  status text and consistent native Editor controls.
+- Installation examples include component lifetime handling. Platform verification and
+  security support guidance distinguish builds, exports, and hardware execution.
+
 ## [0.2.0] - 2026-10-08
 
 ### Fixed

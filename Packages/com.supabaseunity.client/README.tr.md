@@ -2,15 +2,16 @@
 
 Bu paket Unity 2021.3 LTS ile Unity 6 arasında aynı API ile Auth, Database, Realtime, Storage ve Edge Functions kullanmak için Unity’ye özgü bir istemci sağlar. WebGL’de tarayıcı WebSocket köprüsünü kullanır; diğer platformlarda native WebSocket kullanır. Oturum kalıcılığı varsayılan olarak kapalıdır. Açıldığında oturumlar WebGL’de `localStorage`, diğer platformlarda `persistentDataPath` altında saklanır.
 
-> Paket şu anda sürüm adayıdır. Genel C# API yüzeyi `0.2.0` için donduruldu;
-> yükseltmeden önce [değişiklik günlüğünü](CHANGELOG.md) kontrol et.
+> `0.3.0`, `0.2.0` çalışma zamanı API'sini koruyarak Play modu dışında
+> [Editor betikleri](Documentation~/editor-scripting.md) desteği ekler. Yükseltmeden önce
+> [değişiklik günlüğünü](CHANGELOG.md) kontrol et.
 
 ## Hızlı başlangıç
 
 Package Manager’da **Add package from git URL** seçeneğine şunu gir:
 
 ```text
-https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.2.0
+https://github.com/DorukTan/unity-supabase.git?path=/Packages/com.supabaseunity.client#v0.3.0
 ```
 
 Ardından **Tools > Supabase > Setup** ekranını açıp ayar dosyasını oluştur. Supabase Dashboard’daki **Connect** ekranından proje URL’sini ve `sb_publishable_...` anahtarını al, sonra **Test Project Connection** düğmesine bas. Bu test bağlantıyı ve anahtarı kontrol eder; RLS kurallarını değiştirmez. Eski `anon` JWT anahtarları da desteklenir.
@@ -83,3 +84,15 @@ await channel.SubscribeAsync();
 Önemli: Unity uygulamasına hiçbir zaman `sb_secret_...` veya `service_role` anahtarı koyma. Bunlar derlenen oyuncu tarafından çıkarılabilir. İstemci güvenliği publishable/anon anahtarını saklamaya değil, Supabase RLS ve Storage policy kurallarına dayanır. Paket bu anahtarları ayar dosyasında fark ederse build’i durdurur.
 
 Package Manager’daki **Samples** bölümünden içe aktarılabilen `Quickstart` örneği artık gerekli SQL dosyasını, Database sorgusunu, Realtime aboneliğini ve kurulum adımlarını birlikte içeriyor. Bir sorun yaşarsan `Documentation~/troubleshooting.md` dosyasındaki hata rehberinden başlayabilirsin.
+
+## Play modu dışında Editor betikleri
+
+`Editor` klasöründeki araçlarda `Supabase.Unity.Editor.SupabaseEditorClient.Create(settings)`
+ile istemci oluşturabilirsin. Database, Storage, Functions ve doğrudan Auth HTTP çağrıları
+Editor güncellemeleriyle ilerler. `await` kullan ve araç penceresinin `OnDisable` metodunda
+istemciyi `Dispose()` ile kapat.
+
+Bu istemciler oturum ve PKCE verilerini yalnızca bellekte tutar; otomatik token yenileme,
+Realtime ve otomatik tarayıcı girişi desteklenmez. Derleme yenilenirken, Editor kapanırken
+veya Play moduna girerken bekleyen istekler iptal edilir. Örnek pencere ve ayrıntılar için
+[Editor betikleri rehberine](Documentation~/editor-scripting.md) bakabilirsin.

@@ -11,9 +11,9 @@ namespace Supabase.Unity.Editor
         private const string DefaultSettingsFolder = "Assets/Supabase";
         private const string DefaultSettingsPath = DefaultSettingsFolder + "/SupabaseSettings.asset";
         private const string DocumentationUrl =
-            "https://github.com/DorukTan/unity-supabase/blob/v0.2.0/Packages/com.supabaseunity.client/Documentation~/getting-started.md";
+            "https://github.com/DorukTan/unity-supabase/blob/v0.3.0/Packages/com.supabaseunity.client/Documentation~/getting-started.md";
         private const string QuickstartUrl =
-            "https://github.com/DorukTan/unity-supabase/tree/v0.2.0/Packages/com.supabaseunity.client/Samples~/Quickstart";
+            "https://github.com/DorukTan/unity-supabase/tree/v0.3.0/Packages/com.supabaseunity.client/Samples~/Quickstart";
         private const string DashboardUrl = "https://supabase.com/dashboard/projects";
         private const string PackageName = "com.supabaseunity.client";
 
@@ -24,6 +24,9 @@ namespace Supabase.Unity.Editor
         private string connectionStatus;
         private MessageType connectionStatusType = MessageType.None;
         private UnityWebRequest activeRequest;
+        private SupabaseSettings connectionSettings;
+        private string connectionConfiguration;
+        private int connectionVersion;
 
         private static float SectionSpacing
         {
@@ -60,12 +63,12 @@ namespace Supabase.Unity.Editor
 
         private void OnDisable()
         {
-            if (activeRequest != null)
-                activeRequest.Abort();
+            InvalidateConnection();
         }
 
         private void OnGUI()
         {
+            SynchronizeConnectionStatus();
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             var contentWidth = Mathf.Max(
                 320f,
@@ -109,14 +112,15 @@ namespace Supabase.Unity.Editor
                 settings == null ? "Not configured" : configurationValid ? "Ready" : "Needs attention");
             EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
 
+            EditorGUI.BeginDisabledGroup(testingConnection);
             var selected = (SupabaseSettings)EditorGUILayout.ObjectField(
                 "Settings asset", settings, typeof(SupabaseSettings), false);
+            EditorGUI.EndDisabledGroup();
             if (selected != settings)
             {
                 settings = selected;
                 configurationNotice = null;
-                connectionStatus = null;
-                connectionStatusType = MessageType.None;
+                InvalidateConnection();
                 configurationValid = SupabaseSettingsInspectorGui.TryValidate(
                     settings, out options, out validationError);
             }
@@ -143,7 +147,10 @@ namespace Supabase.Unity.Editor
             }
 
             EditorGUI.BeginDisabledGroup(testingConnection);
+            EditorGUI.BeginChangeCheck();
             SupabaseSettingsInspectorGui.DrawFields(new SerializedObject(settings));
+            if (EditorGUI.EndChangeCheck())
+                InvalidateConnection();
             EditorGUI.EndDisabledGroup();
 
             if (configurationValid)
@@ -153,7 +160,7 @@ namespace Supabase.Unity.Editor
                     "Configuration looks valid. Test the connection when you are ready.", MessageType.Info);
                 if (options.PersistSession)
                     EditorGUILayout.HelpBox(
-                        "Session persistence uses plain-text storage by default. For stronger desktop or mobile protection, provide an ISessionStore backed by the operating system's credential storage.",
+                        SupabaseSettingsInspectorGui.PersistenceWarning,
                         MessageType.Warning);
             }
             else
@@ -198,7 +205,7 @@ namespace Supabase.Unity.Editor
             if (GUILayout.Button(
                     testingConnection ? "Testing..." : "Test Project Connection",
                     GUILayout.Height(PrimaryButtonHeight)))
-                TestConnectionAsync();
+                TestConnection();
             EditorGUI.EndDisabledGroup();
 
             if (!configurationValid)
@@ -303,8 +310,45 @@ namespace Supabase.Unity.Editor
                 AssetDatabase.GUIDToAssetPath(guids[0]));
         }
 
-        private async void TestConnectionAsync()
+        private async void TestConnection()
         {
+            await TestConnectionAsync();
+        }
+
+        internal void SynchronizeConnectionStatus()
+        {
+            if (connectionConfiguration != null &&
+                (settings != connectionSettings || settings == null ||
+                 !string.Equals(connectionConfiguration, EditorJsonUtility.ToJson(settings), StringComparison.Ordinal)))
+                InvalidateConnection();
+        }
+
+        private void InvalidateConnection()
+        {
+            connectionVersion++;
+            connectionSettings = null;
+            connectionConfiguration = null;
+            connectionStatus = null;
+            connectionStatusType = MessageType.None;
+            testingConnection = false;
+            var request = activeRequest;
+            activeRequest = null;
+            if (request != null) request.Abort();
+        }
+
+        private bool IsCurrentConnection(int version)
+        {
+            if (this == null || version != connectionVersion) return false;
+            SynchronizeConnectionStatus();
+            return version == connectionVersion;
+        }
+
+        internal async Task TestConnectionAsync()
+        {
+            if (testingConnection) return;
+            connectionSettings = settings;
+            connectionConfiguration = settings == null ? null : EditorJsonUtility.ToJson(settings);
+            var version = ++connectionVersion;
             testingConnection = true;
             connectionStatus = "Connecting...";
             connectionStatusType = MessageType.None;
@@ -318,6 +362,8 @@ namespace Supabase.Unity.Editor
                     var operation = request.SendWebRequest();
                     while (!operation.isDone)
                         await Task.Delay(25);
+
+                    if (!IsCurrentConnection(version)) return;
 
 #if UNITY_2020_2_OR_NEWER
                     var succeeded = request.result == UnityWebRequest.Result.Success;
@@ -338,13 +384,17 @@ namespace Supabase.Unity.Editor
             }
             catch (Exception exception)
             {
+                if (!IsCurrentConnection(version)) return;
                 connectionStatus = "Connection test failed: " + SupabaseHttp.Redact(exception.Message);
                 connectionStatusType = MessageType.Error;
             }
             finally
             {
-                activeRequest = null;
-                testingConnection = false;
+                if (version == connectionVersion)
+                {
+                    activeRequest = null;
+                    testingConnection = false;
+                }
                 if (this != null)
                     Repaint();
             }

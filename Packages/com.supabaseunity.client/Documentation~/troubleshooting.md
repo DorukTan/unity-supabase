@@ -59,7 +59,14 @@ server or Edge Function and authorize it there.
 
 The Quickstart's `setup.sql` creates its read policy and publication entry.
 
-## OAuth works in the Editor but not in a build
+## Requests from Editor scripts never finish
+
+For work outside Play mode, create the client with `SupabaseEditorClient.Create` from
+`Supabase.Unity.Editor`. The regular constructor uses a player coroutine host. Use `await`
+and dispose the Editor client when its owning window closes. See [Editor scripting](editor-scripting.md)
+for the supported operations and lifecycle pattern.
+
+## OAuth works in Editor Play mode but not in a build
 
 - Add the exact callback URL to the Supabase Auth redirect allow-list.
 - Configure the platform deep link for desktop and mobile builds.
