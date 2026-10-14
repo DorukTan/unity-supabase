@@ -37,37 +37,78 @@ Security, Storage policies and server-side authorization.
 
 ## Example
 
+Save this component as `Leaderboard.cs`, attach it to a GameObject, and assign settings.
+Create its `scores` table with the [Quickstart SQL](Samples~/Quickstart/setup.sql).
+
 ```csharp
 using System;
+using System.Threading;
 using Supabase.Unity;
+using UnityEngine;
 
-[Serializable, SupabaseTable("cities")]
-public sealed class City
+public sealed class Leaderboard : MonoBehaviour
 {
-    [SupabaseColumn("id")]
-    public long Id { get; set; }
+    [SerializeField] private SupabaseSettings settings;
+    private SupabaseClient client;
+    private CancellationTokenSource lifetime;
 
-    [SupabaseColumn("name")]
-    public string Name { get; set; }
+    private async void Start()
+    {
+        if (settings == null)
+        {
+            Debug.LogError("Assign a SupabaseSettings asset.", this);
+            return;
+        }
+
+        lifetime = new CancellationTokenSource();
+        var token = lifetime.Token;
+        try
+        {
+            client = new SupabaseClient(settings);
+            var initialized = await client.InitializeAsync(token);
+            token.ThrowIfCancellationRequested();
+            if (!initialized.IsSuccess)
+            {
+                Debug.LogError(initialized.Error, this);
+                return;
+            }
+
+            var scores = await client.From<ScoreRow>()
+                .Select("id,player_name,score")
+                .Order("score", ascending: false)
+                .Limit(10)
+                .GetAsync(token);
+            token.ThrowIfCancellationRequested();
+            if (scores.IsSuccess)
+                Debug.Log("Loaded " + scores.Data.Count + " scores.", this);
+            else
+                Debug.LogError(scores.Error, this);
+        }
+        catch (OperationCanceledException)
+        {
+            // The component's lifetime ended.
+        }
+        catch (SupabaseConfigurationException exception)
+        {
+            Debug.LogError(exception.Message, this);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (lifetime != null) lifetime.Cancel();
+        if (client != null) client.Dispose();
+        if (lifetime != null) lifetime.Dispose();
+    }
 }
 
-var client = new SupabaseClient(settings);
-var initialized = await client.InitializeAsync();
-
-if (!initialized.IsSuccess)
+[Serializable, SupabaseTable("scores")]
+public sealed class ScoreRow
 {
-    UnityEngine.Debug.LogError(initialized.Error);
-    return;
+    [SupabaseColumn("id")] public long Id { get; set; }
+    [SupabaseColumn("player_name")] public string PlayerName { get; set; }
+    [SupabaseColumn("score")] public int Score { get; set; }
 }
-
-var cities = await client.From<City>()
-    .Select("id,name")
-    .Order("name")
-    .Limit(50)
-    .GetAsync();
-
-if (!cities.IsSuccess)
-    UnityEngine.Debug.LogError(cities.Error);
 ```
 
 Network operations return `SupabaseResult` or `SupabaseResult<T>`. Check `IsSuccess` before

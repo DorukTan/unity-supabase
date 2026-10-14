@@ -24,6 +24,12 @@ namespace Supabase.Unity.Editor
 
     internal static class SupabaseSettingsInspectorGui
     {
+        internal const string PersistenceWarning =
+            "Session persistence stores refresh tokens as plain text under Application.persistentDataPath. " +
+            "Desktop processes running as the same user can read them. For stronger protection, " +
+            "provide an ISessionStore backed by the operating system's credential storage. " +
+            "See the session-storage documentation for platform details.";
+
         internal static void DrawFields(SerializedObject settingsObject)
         {
             settingsObject.Update();
@@ -52,12 +58,7 @@ namespace Supabase.Unity.Editor
                 MessageType.Info);
             if (options.PersistSession)
                 EditorGUILayout.HelpBox(
-                    "Session persistence writes the refresh token as plain text to " +
-                    "Application.persistentDataPath. On Android and iOS that location is " +
-                    "app-private. On Windows, macOS, and Linux it is readable by any process " +
-                    "running as the same user, and the token stays usable until it is revoked. " +
-                    "Assign a custom ISessionStore backed by Keychain, Keystore, or another " +
-                    "OS-protected credential store if your game needs more than that.",
+                    PersistenceWarning,
                     MessageType.Warning);
         }
 

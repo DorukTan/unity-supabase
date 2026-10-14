@@ -34,13 +34,13 @@ answering them badly helps nobody.
 
 Platform reports.
 
-The [platform support matrix](README.md#platform-support) reflects one maintainer's testing
-on the hardware they own. Linux is marked `Untested` outright, and every other row rests on
-a single person's machines, not a device lab.
+The [verification table](README.md#platform-support) distinguishes Editor tests, player
+builds, and iOS project export. Device and live-service testing are separate. A successful
+build does not establish that a particular device, OS version, or browser works correctly.
 
 So: if you ship a build, open a platform report saying what happened, whether it worked or
 not. Include your Unity version, the device, and a sanitized log. Reports on older OS
 versions, unusual hardware, and aggressive managed stripping settings are the most valuable,
 because those are exactly the gaps one developer's testing cannot cover.
 
-That is worth more to this project than most pull requests.
+These reports help identify platform-specific failures and document verified configurations.

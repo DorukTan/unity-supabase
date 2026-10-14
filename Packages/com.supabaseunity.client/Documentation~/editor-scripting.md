@@ -57,6 +57,7 @@ public sealed class SupabaseScoresWindow : EditorWindow
     private SupabaseSettings settings;
     private SupabaseClient client;
     private string status;
+    private MessageType statusType = MessageType.Info;
 
     [MenuItem("Tools/Game/Read Scores")]
     private static void Open()
@@ -72,7 +73,7 @@ public sealed class SupabaseScoresWindow : EditorWindow
         {
             if (GUILayout.Button("Read scores")) ReadScores();
         }
-        EditorGUILayout.LabelField(status ?? "Ready");
+        EditorGUILayout.HelpBox(status ?? "Ready", statusType);
     }
 
     private async void ReadScores()
@@ -83,19 +84,32 @@ public sealed class SupabaseScoresWindow : EditorWindow
             current = SupabaseEditorClient.Create(settings);
             client = current;
             status = "Loading...";
+            statusType = MessageType.Info;
+            Repaint();
             var result = await current.From<Score>().Limit(20).GetAsync();
             if (this != null && ReferenceEquals(client, current))
+            {
                 status = result.IsSuccess ? "Loaded " + result.Data.Count + " scores."
                     : result.Error.Message;
+                statusType = result.IsSuccess ? MessageType.Info : MessageType.Error;
+            }
         }
         catch (OperationCanceledException)
         {
-            if (this != null && ReferenceEquals(client, current)) status = "Cancelled.";
+            if (this != null && ReferenceEquals(client, current))
+            {
+                status = "Cancelled.";
+                statusType = MessageType.Info;
+            }
         }
         catch (Exception exception)
         {
             // Avoid logging raw credentials or callback URLs.
-            if (this != null && ReferenceEquals(client, current)) status = exception.GetType().Name;
+            if (this != null && ReferenceEquals(client, current))
+            {
+                status = exception.GetType().Name;
+                statusType = MessageType.Error;
+            }
         }
         finally
         {

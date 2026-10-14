@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
@@ -26,7 +27,6 @@ namespace Supabase.Unity.Editor
             "void", "volatile", "while"
         };
         private string projectUrl = string.Empty;
-        private string publishableKey = string.Empty;
         private string secretApiKey = string.Empty;
         private string outputFolder = "Assets/Supabase/Generated";
         private string generatedNamespace = "Game.Database";
@@ -34,49 +34,79 @@ namespace Supabase.Unity.Editor
         private string settingsSourcePath;
         private bool allowCustomSchemaHost;
         private bool generating;
+        private Vector2 scrollPosition;
+        private MessageType statusType = MessageType.None;
+        private CancellationTokenSource generationCancellation;
+        private UnityWebRequest activeRequest;
 
         [MenuItem("Tools/Supabase/Model Generator")]
         internal static void Open()
         {
-            GetWindow<SupabaseModelGeneratorWindow>("Supabase Models");
+            var window = GetWindow<SupabaseModelGeneratorWindow>("Supabase Models");
+            window.minSize = new Vector2(460f, 420f);
+            window.Show();
         }
 
         private void OnEnable()
         {
+            minSize = new Vector2(460f, 420f);
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             LoadFromSupabaseSettings(false);
         }
 
         private void OnGUI()
         {
+            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             EditorGUILayout.HelpBox(
-                "Supabase requires a secret API key to read the OpenAPI schema. The secret is kept only in this Editor window and is never written to SupabaseSettings or generated files. Never use it in a player build.",
+                "Reading the OpenAPI schema requires a secret API key. It is held in memory for this operation and never saved to settings or generated files. Never include it in a player build.",
                 MessageType.Warning);
+            var previousLabelWidth = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = Mathf.Min(200f, position.width * 0.46f);
+            EditorGUI.BeginDisabledGroup(generating);
             projectUrl = EditorGUILayout.TextField("Project URL", projectUrl);
-            publishableKey = EditorGUILayout.PasswordField("Runtime Publishable Key", publishableKey);
-            secretApiKey = EditorGUILayout.PasswordField("Secret API Key (Editor only)", secretApiKey);
-            allowCustomSchemaHost = EditorGUILayout.Toggle("Allow Custom Schema Host", allowCustomSchemaHost);
+            secretApiKey = EditorGUILayout.PasswordField("Secret Key (Editor only)", secretApiKey);
+            allowCustomSchemaHost = EditorGUILayout.Toggle("Allow Custom Host", allowCustomSchemaHost);
             if (allowCustomSchemaHost)
                 EditorGUILayout.HelpBox(
                     "The Editor-only secret will be sent to the configured custom/self-hosted Project URL. Enable this only after verifying the host.",
                     MessageType.Warning);
             if (!string.IsNullOrEmpty(settingsSourcePath))
-                EditorGUILayout.LabelField("Settings", settingsSourcePath, EditorStyles.miniLabel);
+                EditorGUILayout.LabelField("Settings: " + settingsSourcePath, EditorStyles.wordWrappedMiniLabel);
             outputFolder = EditorGUILayout.TextField("Output Folder", outputFolder);
             generatedNamespace = EditorGUILayout.TextField("Namespace", generatedNamespace);
-            EditorGUI.BeginDisabledGroup(generating);
+            EditorGUIUtility.labelWidth = previousLabelWidth;
             if (GUILayout.Button("Reload from SupabaseSettings"))
                 LoadFromSupabaseSettings(true);
-            if (GUILayout.Button(generating ? "Generating..." : "Fetch Schema and Generate"))
+            EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing * 4f);
+            if (GUILayout.Button(generating ? "Generating..." : "Fetch Schema and Generate",
+                    GUILayout.Height(EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing * 3f)))
                 GenerateAsync();
             EditorGUI.EndDisabledGroup();
+            if (generating && GUILayout.Button("Cancel Generation"))
+                CancelGeneration();
             EditorGUILayout.Space();
-            EditorGUILayout.HelpBox(status, status.StartsWith("Error", StringComparison.Ordinal) ? MessageType.Error : MessageType.None);
+            EditorGUILayout.HelpBox(status, statusType);
+            EditorGUILayout.LabelField("Closing this window cancels an active generation request.", EditorStyles.wordWrappedMiniLabel);
+            EditorGUILayout.EndScrollView();
         }
 
         private void OnDisable()
         {
-            // Avoid serializing or retaining an elevated key with the Editor window.
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            CancelGeneration();
+        }
+
+        private void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.ExitingEditMode || state == PlayModeStateChange.ExitingPlayMode)
+                CancelGeneration();
+        }
+
+        internal void CancelGeneration()
+        {
             secretApiKey = string.Empty;
+            if (generationCancellation != null) generationCancellation.Cancel();
+            if (activeRequest != null) activeRequest.Abort();
         }
 
         private bool LoadFromSupabaseSettings(bool overwriteExisting)
@@ -100,7 +130,10 @@ namespace Supabase.Unity.Editor
             if (settings == null)
             {
                 if (overwriteExisting)
+                {
                     status = "Error: No SupabaseSettings asset was found in the project.";
+                    statusType = MessageType.Error;
+                }
                 settingsSourcePath = null;
                 Repaint();
                 return false;
@@ -108,33 +141,48 @@ namespace Supabase.Unity.Editor
 
             if (overwriteExisting || string.IsNullOrWhiteSpace(projectUrl))
                 projectUrl = settings.ProjectUrl;
-            if (overwriteExisting || string.IsNullOrWhiteSpace(publishableKey))
-                publishableKey = settings.PublishableKey;
             settingsSourcePath = path;
             status = "Loaded Supabase configuration from " + path + ".";
+            statusType = MessageType.Info;
             Repaint();
             return true;
         }
 
         private async void GenerateAsync()
         {
+            await GenerateModelsAsync();
+        }
+
+        internal async Task GenerateModelsAsync()
+        {
+            if (generating) return;
+            var cancellation = new CancellationTokenSource();
+            generationCancellation = cancellation;
+            var token = cancellation.Token;
             generating = true;
             status = "Validating configuration...";
+            statusType = MessageType.Info;
             Repaint();
             try
             {
                 var databaseEndpoint = ResolveDatabaseEndpoint(projectUrl, allowCustomSchemaHost);
                 ValidateEditorSecretKey(secretApiKey);
                 var editorSecret = secretApiKey.Trim();
+                secretApiKey = string.Empty;
+                var requestedFolder = outputFolder;
+                var absoluteFolder = ResolveOutputFolder(requestedFolder);
+                var requestedNamespace = ValidateNamespace(generatedNamespace);
                 string openApiText;
                 using (var request = UnityWebRequest.Get(databaseEndpoint.AbsoluteUri.TrimEnd('/') + "/"))
                 {
+                    activeRequest = request;
                     request.timeout = 30;
                     request.redirectLimit = 0;
                     request.SetRequestHeader("apikey", editorSecret);
                     request.SetRequestHeader("Accept", "application/openapi+json");
                     var operation = request.SendWebRequest();
-                    while (!operation.isDone) await Task.Delay(25);
+                    while (!operation.isDone) await Task.Delay(25, token);
+                    token.ThrowIfCancellationRequested();
 #if UNITY_2020_2_OR_NEWER
                     if (request.result != UnityWebRequest.Result.Success)
 #else
@@ -143,15 +191,15 @@ namespace Supabase.Unity.Editor
                         throw new InvalidOperationException(SupabaseHttp.Redact(
                             request.error + "\n" + request.downloadHandler.text));
                     openApiText = request.downloadHandler.text;
+                    activeRequest = null;
                 }
 
+                token.ThrowIfCancellationRequested();
                 var openApi = JObject.Parse(openApiText);
                 var schemas = openApi["definitions"] as JObject ?? openApi["components"]?["schemas"] as JObject;
                 if (schemas == null || !schemas.HasValues)
                     throw new InvalidOperationException("The OpenAPI document did not contain table schemas. Check Data API exposure and grants.");
 
-                var absoluteFolder = ResolveOutputFolder(outputFolder);
-                generatedNamespace = ValidateNamespace(generatedNamespace);
                 var generatedFiles = new List<KeyValuePair<string, string>>();
                 var destinations = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var schema in schemas.Properties())
@@ -165,23 +213,37 @@ namespace Supabase.Unity.Editor
                             "Multiple schema definitions map to the generated type " + className + ". Rename the conflicting database objects.");
                     EnsureSafeGeneratedTarget(destination);
                     generatedFiles.Add(new KeyValuePair<string, string>(destination,
-                        GenerateModel(schema.Name, className, definition, generatedNamespace)));
+                        GenerateModel(schema.Name, className, definition, requestedNamespace)));
                 }
+                token.ThrowIfCancellationRequested();
                 Directory.CreateDirectory(absoluteFolder);
                 foreach (var generatedFile in generatedFiles)
+                {
+                    token.ThrowIfCancellationRequested();
                     File.WriteAllText(generatedFile.Key, generatedFile.Value, new UTF8Encoding(false));
+                }
                 AssetDatabase.Refresh();
-                status = "Generated " + generatedFiles.Count + " model(s) in " + outputFolder + ".";
+                status = "Generated " + generatedFiles.Count + " model(s) in " + requestedFolder + ".";
+                statusType = MessageType.Info;
+            }
+            catch (OperationCanceledException)
+            {
+                status = "Cancelled.";
+                statusType = MessageType.Info;
             }
             catch (Exception exception)
             {
                 status = "Error: " + SupabaseHttp.Redact(exception.Message);
+                statusType = MessageType.Error;
             }
             finally
             {
                 secretApiKey = string.Empty;
+                activeRequest = null;
+                generationCancellation = null;
+                cancellation.Dispose();
                 generating = false;
-                Repaint();
+                if (this != null) Repaint();
             }
         }
 

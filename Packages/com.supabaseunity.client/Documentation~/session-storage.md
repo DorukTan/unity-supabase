@@ -106,7 +106,8 @@ is welcome.
 
 ## PKCE verifiers are stored separately
 
-OAuth PKCE verifiers do **not** follow `PersistSession`. They are always written to durable
+For default runtime clients, OAuth PKCE verifiers do **not** follow `PersistSession`.
+They are always written to durable
 platform storage through `SupabaseClientOptions.PkceStore`.
 
 This is deliberate. `Application.OpenURL` backgrounds your game, and Android or iOS is free
@@ -117,3 +118,7 @@ fail through no fault of the player.
 A verifier is short-lived, single-use, and worthless to an attacker once exchanged, so
 persisting it does not carry the risk that persisting a refresh token does. Verifiers expire
 after 10 minutes and are deleted on successful exchange.
+
+Editor clients created with `SupabaseEditorClient.Create` use separate memory-only session
+and PKCE stores, which are discarded when the client is disposed. They do not handle
+automatic browser callbacks. See [Editor scripting](editor-scripting.md).

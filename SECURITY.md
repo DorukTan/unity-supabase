@@ -2,7 +2,9 @@
 
 ## Supported versions
 
-Only the latest tagged prerelease is supported while the public API is still evolving.
+Security fixes target the latest stable release. Upgrade older versions before reporting
+a problem that may already have been fixed. Prereleases are provided for evaluation;
+their API and support boundaries may change.
 
 ## Reporting a vulnerability
 

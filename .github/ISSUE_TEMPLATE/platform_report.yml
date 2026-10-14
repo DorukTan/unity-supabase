@@ -1,6 +1,6 @@
 name: Platform report
 description: Report that you shipped or tested a build on a platform, working or not
-labels: ["platform-report"]
+labels: ["documentation"]
 body:
   - type: markdown
     attributes:
